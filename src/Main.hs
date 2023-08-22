@@ -1,14 +1,15 @@
 module Main (main) where
 
 import Config (fps)
-import Game (Player (pPos), State (State, sData), World (World, wPlayer), deleteKey, insertKey, newState)
-import Graphics.Gloss (Display (InWindow), Picture, black, circle, color, play, translate, yellow)
+import Game (Asset (Asset), AssetId (AssetId), Map (..), Player (pPos), State (State, sData), Tile (..), World (World, wPlayer), deleteKey, insertKey, newState)
+import Graphics.Gloss (Display (InWindow), Picture, black, circle, color, loadBMP, play, translate, yellow)
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), KeyState (Down, Up))
+import Renderer (renderMap)
+import System.Directory (getDirectoryContents)
+import System.FilePath (splitExtension, (</>))
 
 render :: State World -> Picture
-render state = color yellow $ translate x y $ circle 6
-  where
-    (x, y) = pPos $ wPlayer $ sData state
+render = renderMap
 
 handleEvents :: Event -> State World -> State World
 handleEvents (EventKey key keyState _ _) state
@@ -21,7 +22,38 @@ update :: Float -> State World -> State World
 update dt state = state
 
 main :: IO ()
-main = do
-  let window = InWindow "My Window" (640, 480) (100, 100)
+main =
+  do
+    imageAssets <- getDirectoryContents "assets"
 
-  play window black fps newState render handleEvents update
+    let imageAssets' = filter (\x -> x /= "." && x /= "..") imageAssets
+    assets <- mapM loadAsset imageAssets'
+
+    let window = InWindow "My Window" (640, 480) (100, 100)
+    let map_ =
+          Map
+            { mName = "test",
+              mLayers =
+                [ [ [ Tile
+                        { tTexture = AssetId 6,
+                          tSolid = False,
+                          tPos = (0, 0)
+                        },
+                      Tile
+                        { tTexture = AssetId 6,
+                          tSolid = False,
+                          tPos = (1, 0)
+                        }
+                    ]
+                  ]
+                ]
+            }
+    let initialState = newState assets map_
+
+    play window black fps initialState render handleEvents update
+  where
+    loadAsset assetPath = do
+      assetPicture <- loadBMP ("assets" </> assetPath)
+      return $ Asset assetName assetPicture
+      where
+        assetName = fst $ splitExtension assetPath
