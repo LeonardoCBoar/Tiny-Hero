@@ -1,6 +1,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 
-module Game (State (..), World (..), Player (..), hasKey, insertKey, deleteKey, newState) where
+module Game (State (..), World (..), Player (..), isKeyPressed, insertKey, deleteKey, newState) where
 
 import Data.Set qualified as S
 import Graphics.Gloss.Interface.IO.Interact (Key, Point)
@@ -10,8 +10,8 @@ data State a = State
     sKeys :: S.Set Key
   }
 
-hasKey :: Key -> State a -> Bool
-hasKey k = S.member k . sKeys
+isKeyPressed :: Key -> State a -> Bool
+isKeyPressed k = S.member k . sKeys
 
 insertKey :: Key -> State a -> State a
 insertKey k s = s {sKeys = S.insert k (sKeys s)}
