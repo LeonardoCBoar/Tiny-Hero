@@ -24,6 +24,7 @@ executable haskell-boar
                     ,  gloss
                     ,  directory
                     ,  filepath
+                    ,  aeson
   ghc-options:         -Wall
                        -Wcompat
                        -Widentities

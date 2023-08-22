@@ -21,10 +21,13 @@ handleEvents _ state = state
 update :: Float -> State World -> State World
 update dt state = state
 
+mapNameToPath :: String -> String
+mapNameToPath mapName = "assets" </> "maps" </> (mapName ++ "_layer0" ++ ".bmp")
+
 main :: IO ()
 main =
   do
-    imageAssets <- getDirectoryContents "assets"
+    imageAssets <- getDirectoryContents ("assets" </> "images")
 
     let imageAssets' = filter (\x -> x /= "." && x /= "..") imageAssets
     assets <- mapM loadAsset imageAssets'
@@ -52,8 +55,12 @@ main =
 
     play window black fps initialState render handleEvents update
   where
+    -- loadMap mapName = do
+    --   mapPicture <- loadBMP ("assets" </> "maps" </> mapNameToPath mapName)
+    --   return $ Map mapName undefined
+
     loadAsset assetPath = do
-      assetPicture <- loadBMP ("assets" </> assetPath)
+      assetPicture <- loadBMP ("assets" </> "images" </> assetPath)
       return $ Asset assetName assetPicture
       where
         assetName = fst $ splitExtension assetPath
