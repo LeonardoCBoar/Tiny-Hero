@@ -17,13 +17,14 @@ extra-source-files:  README.md
 executable haskell-boar
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       Game Config Renderer
+  other-modules:       Game Config Renderer Tile
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                     ,  containers
                     ,  gloss
                     ,  directory
                     ,  filepath
+                    ,  bytestring
                     ,  aeson
   ghc-options:         -Wall
                        -Wcompat

@@ -1,13 +1,32 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
-module Game (State (..), World (..), Player (..), Asset (..), AssetId (..), Map (..), Tile (..), Grid, Action(..),
-  isValidAction, updatePlayer, updateWorld, isKeyPressed, insertKey, deleteKey, newState, tileFromAsset, findAssetId, getAssetFromId) where
+module Game
+  ( State (..),
+    World (..),
+    Player (..),
+    Action (..),
+    Map (..),
+    isValidAction,
+    updatePlayer,
+    updateWorld,
+    isKeyPressed,
+    insertKey,
+    deleteKey,
+    newState,
+    tilesFromChar,
+    withMap,
+  )
+where
 
-import Data.Function (on)
+import Data.Aeson hiding (Key)
 import Data.Set qualified as S
-import Graphics.Gloss.Interface.IO.Interact (Key, Picture, Point, Key(..), SpecialKey(..))
-import System.FilePath (splitExtension)
+import Debug.Trace (trace)
+import GHC.Generics
+import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point, SpecialKey (..))
+import Tile (Tile (..))
 
 data State a = State
   { sData :: a,
@@ -15,6 +34,7 @@ data State a = State
     updateTimer :: Float,
     playerAction :: Action
   }
+  deriving (Show)
 
 isKeyPressed :: Key -> State a -> Bool
 isKeyPressed k = S.member k . sKeys
@@ -25,7 +45,8 @@ insertKey k s = s {sKeys = S.insert k (sKeys s)}
 deleteKey :: Key -> State a -> State a
 deleteKey k s = s {sKeys = S.delete k (sKeys s)}
 
-data Action = NoAction | Move Point | Attack Point
+data Action = NoAction | Move Point | Attack Point deriving (Show)
+
 isValidAction :: Action -> Bool
 isValidAction NoAction = False
 isValidAction _ = True
@@ -33,6 +54,7 @@ isValidAction _ = True
 data Player = Player
   { pPos :: Point
   }
+  deriving (Show)
 
 updateWorld :: State World -> World
 updateWorld state = world {wPlayer = player}
@@ -42,32 +64,64 @@ updateWorld state = world {wPlayer = player}
 
 updatePlayer :: Action -> Player -> Player
 updatePlayer (Move (x, y)) player = player {pPos = (pX + x, pY + y)}
-    where
-      pX = fst $ pPos player
-      pY = snd $ pPos player
+  where
+    pX = fst $ pPos player
+    pY = snd $ pPos player
 updatePlayer _ player = player
 
-data Asset = Asset
-  { aName :: String,
-    aPicture :: Picture
+-- newtype JsonMap = JsonMap
+--   { jTiles :: [[Char]]
+--   }
+--   deriving (Show, Generic)
+
+-- instance ToJSON JsonMap where
+--   toEncoding = genericToEncoding defaultOptions
+
+-- instance FromJSON JsonMap where
+--   parseJSON = withObject "JsonMap" $ \o -> do
+--     jsonTiles <- o .: "tiles"
+--     return JsonMap {jTiles = jsonTiles}
+
+newtype Map a = Map
+  { mTiles :: [[a]]
   }
+  deriving (Show, Generic)
 
-instance Eq Asset where
-  (==) = (==) `on` aName
+instance (ToJSON a) => ToJSON (Map a) where
+  toEncoding = genericToEncoding defaultOptions
 
-instance Ord Asset where
-  compare = compare `on` aName
+instance (FromJSON a) => FromJSON (Map a) where
+  parseJSON = withObject "Map" $ \o -> do
+    jsonTiles <- o .: "tiles"
+    return Map {mTiles = jsonTiles}
 
-newtype AssetId = AssetId Int
+instance Functor Map where
+  fmap f Map {mTiles = tiles} = Map {mTiles = map (map f) tiles}
+
+instance Applicative Map where
+  pure a = Map [[a]]
+  Map [[f]] <*> Map values = Map $ map (map f) values
+  Map fs <*> Map values = Map $ zipWith (zipWith ($)) fs values
 
 data World = World
   { wPlayer :: Player,
-    wAssets :: S.Set Asset,
-    wMap :: Map
+    wTiles :: [Tile],
+    wMap :: Map Tile
   }
+  deriving (Show)
 
-newState :: [Asset] -> Map -> State World
-newState assets map_ =
+findTile :: String -> [Tile] -> Tile
+findTile name tiles =
+  head $
+    filter
+      ( \t -> case t of
+          EmptyTile -> False
+          _ -> tName t == name
+      )
+      tiles
+
+newState :: [Tile] -> State World
+newState tiles =
   State
     { sData =
         World
@@ -75,45 +129,27 @@ newState assets map_ =
               Player
                 { pPos = (0, 0)
                 },
-            wMap = map_,
-            wAssets = S.fromList assets
+            wTiles = tiles,
+            wMap = Map {mTiles = []}
           },
       sKeys = S.empty,
       updateTimer = 0.0,
       playerAction = NoAction
     }
 
-findAssetId :: State World -> (Asset -> Bool) -> AssetId
-findAssetId world f = findAssetId' (S.toList $ wAssets $ sData world) 0
+withMap :: Map Tile -> State World -> State World
+withMap map' state = state {sData = world {wMap = map'}}
   where
-    findAssetId' [] _ = error "Asset not found"
-    findAssetId' (x : xs) i
-      | f x = AssetId i
-      | otherwise = findAssetId' xs (i + 1)
+    world = sData state
 
-getAssetFromId :: State World -> AssetId -> Asset
-getAssetFromId world (AssetId i) = S.elemAt i $ wAssets $ sData world
-
-type Grid = [[Tile]]
-
-data Tile
-  = Tile
-      { tTexture :: AssetId,
-        tSolid :: Bool,
-        tPos :: Point
-      }
-  | SmartTile
-      { tTextures :: [AssetId],
-        tSolid :: Bool,
-        tPos :: Point
-      }
-
-data Map = Map
-  { mName :: String,
-    mLayers :: [Grid]
-  }
-
-tileFromAsset :: State World -> String -> Bool -> Point -> Tile
-tileFromAsset world path = Tile tilePicture
+tilesFromChar :: State World -> Char -> Tile
+tilesFromChar state c
+  | c == ' ' = EmptyTile
+  | otherwise = findTile name tiles
   where
-    tilePicture = findAssetId world (\x -> aName x == snd (splitExtension path))
+    tiles = wTiles $ sData state
+    name = case c of
+      'N' -> "dirt"
+      'W' -> "wall"
+      'F' -> "sand"
+      _ -> "error: " ++ [c]

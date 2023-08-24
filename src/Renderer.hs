@@ -1,26 +1,24 @@
 module Renderer (renderMap) where
 
-import Game (Asset (Asset), Grid, Map (..), State (..), Tile (..), World (..), getAssetFromId)
-import Graphics.Gloss (Picture, pictures, translate)
+import Config (tileSize)
+import Game (Map (..), State (..), World (..))
+import Graphics.Gloss (Picture, circle, color, pictures, translate, yellow)
+import Tile (Tile (..))
 
-renderLayer :: State World -> Grid -> Picture
-renderLayer state grid = pictures lines'
-  where
-    lines' = map renderLine grid
-
-    -- TODO: handle smart tiles
-    renderTile :: Tile -> Picture
-    renderTile tile = translate x y assetPicture
-      where
-        (x, y) = tPos tile
-        assetId = tTexture tile
-        Asset _ assetPicture = getAssetFromId state assetId
-
-    renderLine :: [Tile] -> Picture
-    renderLine tiles = pictures $ map renderTile tiles
+zipPosition :: [[Tile]] -> [(Int, Int, Tile)]
+zipPosition grid = do
+  (y, line) <- zip [0 ..] grid
+  (x, tile) <- zip [0 ..] line
+  return (x, y, tile)
 
 renderMap :: State World -> Picture
-renderMap world = pictures layers
+renderMap world = pictures $ map renderTile posTiles
   where
     map_ = wMap $ sData world
-    layers = map (renderLayer world) $ mLayers map_
+    posTiles = zipPosition $ mTiles map_
+
+    renderTile :: (Int, Int, Tile) -> Picture
+    renderTile (x, y, Tile {tTexture = texture}) = translate (tileSize * fromIntegral x) (tileSize * fromIntegral y) texture
+    renderTile (x, y, EmptyTile) = translate (tileSize * fromIntegral x) (tileSize * fromIntegral y) (color yellow $ circle 1)
+    -- TODO: render smart tiles correctly
+    renderTile (x, y, SmartTile {tTextures = textures}) = translate (tileSize * fromIntegral x) (tileSize * fromIntegral y) (head textures)
