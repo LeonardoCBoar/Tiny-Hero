@@ -104,8 +104,6 @@ main =
     let tiles = EmptyTile : (solidTiles''' ++ nonSolidTiles''')
     let window = InWindow "My Window" (640, 480) (100, 100)
 
-    mapM_ print tiles
-
     mapContent <- BSL.readFile (mapsFolder </> "test.json")
     let charsMap = case decode mapContent :: Maybe (Map Char) of
           Just map' -> map'

@@ -18,6 +18,7 @@ module Game
     newState,
     tilesFromChar,
     withMap,
+    getNeighbors,
   )
 where
 
@@ -153,3 +154,15 @@ tilesFromChar state c
       'W' -> "wall"
       'F' -> "sand"
       _ -> "error: " ++ [c]
+
+getNeighbors :: Point -> [Point]
+getNeighbors (x, y) = [topRight, topMiddle, topLeft, middleRight, middleLeft, bottomRight, bottomMiddle, bottomLeft]
+  where
+    topRight = (x + 1, y + 1)
+    topMiddle = (x, y + 1)
+    topLeft = (x - 1, y + 1)
+    middleRight = (x + 1, y)
+    middleLeft = (x - 1, y)
+    bottomRight = (x + 1, y - 1)
+    bottomMiddle = (x, y - 1)
+    bottomLeft = (x - 1, y - 1)
