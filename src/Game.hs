@@ -21,6 +21,7 @@ module Game
     tilesFromChar,
     withMap,
     getNeighbors,
+    (!!!),
   )
 where
 
@@ -122,19 +123,6 @@ updateWorld state = world {wPlayer = player, wEnemies = enemies}
     enemies = map (updateEnemy state) (wEnemies world)
 
 
--- newtype JsonMap = JsonMap
---   { jTiles :: [[Char]]
---   }
---   deriving (Show, Generic)
-
--- instance ToJSON JsonMap where
---   toEncoding = genericToEncoding defaultOptions
-
--- instance FromJSON JsonMap where
---   parseJSON = withObject "JsonMap" $ \o -> do
---     jsonTiles <- o .: "tiles"
---     return JsonMap {jTiles = jsonTiles}
-
 newtype Map a = Map
   { mTiles :: [[a]]
   }
@@ -163,6 +151,9 @@ data World = World
     wEnemies :: [Enemy]
   }
   deriving (Show)
+
+(!!!) :: Map a -> Point -> a
+Map {mTiles = tiles} !!! (x, y) = (tiles !! floor y) !! floor x
 
 findTile :: String -> [Tile] -> Tile
 findTile name tiles =
@@ -207,9 +198,10 @@ tilesFromChar state c
       'F' -> "sand"
       _ -> "error: " ++ [c]
 
-getNeighbors :: Point -> [Point]
-getNeighbors (x, y) = [topRight, topMiddle, topLeft, middleRight, middleLeft, bottomRight, bottomMiddle, bottomLeft]
+getNeighbors :: Point -> Int -> Int -> [Point]
+getNeighbors (x, y) mapWidth mapHeight = filter isValidNeighbor [topRight, topMiddle, topLeft, middleRight, middleLeft, bottomRight, bottomMiddle, bottomLeft]
   where
+    isValidNeighbor (x, y) = x >= 0 && x < fromIntegral mapWidth && y >= 0 && y < fromIntegral mapHeight
     topRight = (x + 1, y + 1)
     topMiddle = (x, y + 1)
     topLeft = (x - 1, y + 1)

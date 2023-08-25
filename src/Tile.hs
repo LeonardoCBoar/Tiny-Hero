@@ -16,7 +16,7 @@ data Tile
         tIsSolid :: Bool
       }
   | EmptyTile
-  deriving (Show)
+  deriving (Show, Eq)
 
 tilePositionToTextureIndex :: Point -> Int
 tilePositionToTextureIndex (x, y) = case (x, y) of
