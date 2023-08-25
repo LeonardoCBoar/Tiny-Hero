@@ -13,7 +13,8 @@ import Debug.Trace
 import Game
   ( Action (..),
     Map (..),
-    Player (pPos),
+    Entity(..),
+    Player (..),
     State (State, playerAction, sData, updateTimer),
     World (World, wPlayer),
     deleteKey,
@@ -63,7 +64,7 @@ update :: Float -> State World -> State World
 update dt state
   | isValidAction action = do
       trace
-        (show $ pPos $ wPlayer $ sData state)
+        (show $ ePos $ pEnt $ wPlayer $ sData state)
         state {sData = updateWorld state, updateTimer = 0, playerAction = NoAction}
   | otherwise = state {updateTimer = curUpdateTimer}
   where

@@ -7,6 +7,7 @@ module Game
   ( State (..),
     World (..),
     Player (..),
+    Entity(..),
     Action (..),
     Map (..),
     isValidAction,
@@ -52,10 +53,38 @@ isValidAction :: Action -> Bool
 isValidAction NoAction = False
 isValidAction _ = True
 
-data Player = Player
-  { pPos :: Point
-  }
+data Stats = Stats
+  {
+    maxLife :: Integer,
+    life :: Integer,
+    attack :: Integer
+  } deriving (Show)
+
+data Entity = Entity
+  {
+    ePos :: Point,
+    eId :: Integer, --TODO: Implement unique IDs
+    eStats :: Stats
+  } deriving (Show)
+
+newEntity :: Point -> Integer -> Integer -> Entity
+newEntity startPos startLife attack = Entity startPos 0 (Stats startLife startLife attack)
+
+moveEntity :: Entity -> Point -> Entity
+moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
+  where
+    pos = ePos entity
+    x = fst pos
+    y = snd pos
+
+data Player = Player {pEnt :: Entity}
   deriving (Show)
+
+updatePlayer :: Action -> Player -> Player
+updatePlayer (Move dir) (Player ent) = Player $ moveEntity ent dir
+updatePlayer _ player = player
+
+data Enemy = Melee {eEnt :: Entity} | Ranged { eEnt :: Entity}
 
 updateWorld :: State World -> World
 updateWorld state = world {wPlayer = player}
@@ -63,12 +92,6 @@ updateWorld state = world {wPlayer = player}
     world = sData state
     player = updatePlayer (playerAction state) (wPlayer world)
 
-updatePlayer :: Action -> Player -> Player
-updatePlayer (Move (x, y)) player = player {pPos = (pX + x, pY + y)}
-  where
-    pX = fst $ pPos player
-    pY = snd $ pPos player
-updatePlayer _ player = player
 
 -- newtype JsonMap = JsonMap
 --   { jTiles :: [[Char]]
@@ -127,9 +150,7 @@ newState tiles =
     { sData =
         World
           { wPlayer =
-              Player
-                { pPos = (0, 0)
-                },
+              Player (newEntity (0,0) 10 2),
             wTiles = tiles,
             wMap = Map {mTiles = []}
           },
