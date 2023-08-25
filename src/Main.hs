@@ -15,8 +15,9 @@ import Game
     Map (..),
     Entity(..),
     Player (..),
+    Enemy (..),
     State (State, playerAction, sData, updateTimer),
-    World (World, wPlayer),
+    World (World, wPlayer, wEnemies),
     deleteKey,
     insertKey,
     isValidAction,
@@ -40,10 +41,11 @@ render :: State World -> Picture
 render state = scale scalingFactor scalingFactor $ renderMap state
 
 getActionFromKey :: Key -> Action
-getActionFromKey (SpecialKey KeyLeft) = Move (-1, 0)
+getActionFromKey (SpecialKey KeyLeft)  = Move (-1, 0)
 getActionFromKey (SpecialKey KeyRight) = Move (1, 0)
-getActionFromKey (SpecialKey KeyUp) = Move (0, -1)
-getActionFromKey (SpecialKey KeyDown) = Move (0, 1)
+getActionFromKey (SpecialKey KeyUp)    = Move (0,-1)
+getActionFromKey (SpecialKey KeyDown)  = Move (0, 1)
+getActionFromKey (SpecialKey KeySpace) = Move (0, 0)
 getActionFromKey _ = NoAction
 
 updateInterval :: Float
@@ -57,14 +59,15 @@ handleEvents (EventKey key keyState _ _) state
   | keyState == Up = deleteKey key state
   | otherwise = state
   where
-    actionKeys = [SpecialKey KeyUp, SpecialKey KeyDown, SpecialKey KeyLeft, SpecialKey KeyRight]
+    actionKeys = [SpecialKey KeySpace, SpecialKey KeyUp, SpecialKey KeyDown, SpecialKey KeyLeft, SpecialKey KeyRight]
 handleEvents _ state = state
 
 update :: Float -> State World -> State World
 update dt state
   | isValidAction action = do
       trace
-        (show $ ePos $ pEnt $ wPlayer $ sData state)
+        ("Player: " ++ show ( ePos $ pEnt $ wPlayer $ sData state) ++
+         "Enemy: " ++ show  ( ePos $ eEnt $ head $ wEnemies $ sData state))
         state {sData = updateWorld state, updateTimer = 0, playerAction = NoAction}
   | otherwise = state {updateTimer = curUpdateTimer}
   where

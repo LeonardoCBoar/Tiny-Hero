@@ -7,6 +7,7 @@ module Game
   ( State (..),
     World (..),
     Player (..),
+    Enemy (..),
     Entity(..),
     Action (..),
     Map (..),
@@ -67,6 +68,12 @@ data Entity = Entity
     eStats :: Stats
   } deriving (Show)
 
+pointDiff :: Point -> Point -> Point
+pointDiff (originX, originY) (targetX, targetY) = (targetX - originX, targetY - originY)
+
+manhattanDist :: Point -> Integer
+manhattanDist (x, y) = abs(round x + round y)
+
 newEntity :: Point -> Integer -> Integer -> Entity
 newEntity startPos startLife attack = Entity startPos 0 (Stats startLife startLife attack)
 
@@ -77,6 +84,12 @@ moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
     x = fst pos
     y = snd pos
 
+moveEntityTowards :: Entity -> Point -> Entity -- TODO: Check collisions
+moveEntityTowards entity (distanceX, distanceY)
+  | distanceX >= distanceY = moveEntity entity (distanceX / abs distanceX, 0)
+  | otherwise = moveEntity entity (0,distanceY / abs distanceY)
+
+
 data Player = Player {pEnt :: Entity}
   deriving (Show)
 
@@ -84,13 +97,29 @@ updatePlayer :: Action -> Player -> Player
 updatePlayer (Move dir) (Player ent) = Player $ moveEntity ent dir
 updatePlayer _ player = player
 
-data Enemy = Melee {eEnt :: Entity} | Ranged { eEnt :: Entity}
+data EnemyState = EIdle | EFollow | EAttack -- TODO
+
+data Enemy = Melee {eEnt :: Entity} | Ranged { eEnt :: Entity} deriving (Show)
+
+updateEnemy :: State World -> Enemy -> Enemy
+updateEnemy (State world _ _ _) enemy
+  | playerDist == 0 = error "Impossible colision"
+  | playerDist == 1 = enemy -- TODO: Cause damage to player
+  | otherwise = Melee $ moveEntityTowards (eEnt enemy) playerDir --TODO: Support ranged
+  where
+    playerDist = manhattanDist playerDir
+    playerDir = pointDiff enemyPos playerPos
+    enemyPos = ePos $ eEnt enemy
+    playerPos = ePos $ pEnt player
+    player = wPlayer world
+
 
 updateWorld :: State World -> World
-updateWorld state = world {wPlayer = player}
+updateWorld state = world {wPlayer = player, wEnemies = enemies}
   where
     world = sData state
     player = updatePlayer (playerAction state) (wPlayer world)
+    enemies = map (updateEnemy state) (wEnemies world)
 
 
 -- newtype JsonMap = JsonMap
@@ -130,7 +159,8 @@ instance Applicative Map where
 data World = World
   { wPlayer :: Player,
     wTiles :: [Tile],
-    wMap :: Map Tile
+    wMap :: Map Tile,
+    wEnemies :: [Enemy]
   }
   deriving (Show)
 
@@ -152,7 +182,8 @@ newState tiles =
           { wPlayer =
               Player (newEntity (0,0) 10 2),
             wTiles = tiles,
-            wMap = Map {mTiles = []}
+            wMap = Map {mTiles = []},
+            wEnemies = [Melee (newEntity (10,10) 2 1)]
           },
       sKeys = S.empty,
       updateTimer = 0.0,
