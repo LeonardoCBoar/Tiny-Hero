@@ -53,7 +53,7 @@ updateInterval = 0.5
 
 handleEvents :: Event -> State World -> State World
 handleEvents (EventKey key keyState _ _) state
-  | updateTimer state < updateInterval = do trace "ignored action" state
+  | updateTimer state < updateInterval = state
   | keyState == Down && key `elem` actionKeys = state {playerAction = getActionFromKey key}
   | keyState == Down = insertKey key state
   | keyState == Up = deleteKey key state

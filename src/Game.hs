@@ -87,8 +87,10 @@ moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
 
 moveEntityTowards :: Entity -> Point -> Entity -- TODO: Check collisions
 moveEntityTowards entity (distanceX, distanceY)
-  | distanceX >= distanceY = moveEntity entity (distanceX / abs distanceX, 0)
-  | otherwise = moveEntity entity (0,distanceY / abs distanceY)
+  | abs distanceX  >= abs distanceY = do trace (show distanceX ++ " > " ++ show distanceY) 
+                                          moveEntity entity (distanceX / abs distanceX, 0)
+  | otherwise = do trace (show distanceX ++ " < " ++ show distanceY)
+                                          moveEntity entity (0,distanceY / abs distanceY)
 
 
 data Player = Player {pEnt :: Entity}
