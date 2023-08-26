@@ -66,7 +66,8 @@ data Stats = Stats
 data Entity = Entity
   { ePos :: Point,
     eId :: Integer, -- TODO: Implement unique IDs
-    eStats :: Stats
+    eStats :: Stats,
+    eTexture :: Picture
   }
   deriving (Show)
 
@@ -76,7 +77,7 @@ pointDiff (originX, originY) (targetX, targetY) = (targetX - originX, targetY - 
 manhattanDist :: Point -> Integer
 manhattanDist (x, y) = abs (round x + round y)
 
-newEntity :: Point -> Integer -> Integer -> Entity
+newEntity :: Point -> Integer -> Integer -> Picture -> Entity
 newEntity startPos startLife attack = Entity startPos 0 (Stats startLife startLife attack)
 
 moveEntity :: Entity -> Point -> Entity
@@ -182,14 +183,14 @@ data World = World
 (!!!) :: Map a -> Point -> a
 Map {mTiles = tiles} !!! (x, y) = (tiles !! floor y) !! floor x
 
-newState :: [Map Tile] -> M.Map String Picture -> [Tile] -> State World
-newState maps pictureMap tiles =
+newState :: Picture -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
+newState playerPicture maps pictureMap tiles =
   State
     { sData =
         World
           { wPlayer =
-              Player (newEntity (0, 0) 10 2),
-            wEnemies = [Melee (newEntity (10, 10) 2 1)],
+              Player (newEntity (0, 0) 10 2 playerPicture),
+            wEnemies = [Melee (newEntity (10, 10) 2 1 undefined)], -- TODO: load enemies sprites
             wTiles = tiles,
             wPictureTileMap = pictureMap,
             wCurrentMap = 0,

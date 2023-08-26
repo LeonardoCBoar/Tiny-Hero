@@ -2,7 +2,7 @@
 
 module Main (main) where
 
-import Config (fps, halfTileSize, mapsFolder, scalingFactor, tileSize, tilesFolder)
+import Config (charactersFolder, fps, halfTileSize, mapsFolder, scalingFactor, tileSize, tilesFolder)
 -- REMOVER DEPOIS DE TESTAR!!!!!!!!!!!!!
 
 import Data.Aeson hiding (Key)
@@ -30,7 +30,7 @@ import Game
   )
 import Graphics.Gloss (Display (InWindow), Picture, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
-import Renderer (renderMap, screenPositionToWorldPosition)
+import Renderer (renderMap, renderPlayer, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
 import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
 
@@ -38,7 +38,9 @@ import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
 -- TODO: REMOVER TRACES ANTES DE ENTREGAR O PROJETO
 
 render :: State World -> Picture
-render state = scale scalingFactor scalingFactor $ renderMap state
+render state = scale scalingFactor scalingFactor $ pictures renderAll
+  where
+    renderAll = map (\f -> f state) [renderMap, renderPlayer]
 
 getActionFromKey :: Key -> Action
 getActionFromKey (SpecialKey KeyLeft) = Move (-1, 0)
@@ -119,10 +121,11 @@ main =
     charMaps <- mapM loadMap maps
     let gameMaps = createMaps charMaps gameTiles
 
+    playerPicture <- loadBMP (charactersFolder </> "knight.bmp")
     let window = InWindow "My Window" (640, 480) (100, 100)
 
     -- let positions = reverse [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2), (2, 2)]
-    let initialState = newState gameMaps tileMap gameTiles
+    let initialState = newState playerPicture gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update
   where

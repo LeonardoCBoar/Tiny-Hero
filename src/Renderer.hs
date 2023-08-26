@@ -3,11 +3,11 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Renderer (renderMap, screenPositionToWorldPosition) where
+module Renderer (renderMap, renderPlayer, screenPositionToWorldPosition) where
 
 import Config (halfTileSize, scalingFactor, tileSize)
 import Data.Map qualified as M
-import Game (Map (..), State (..), Tile (Tile), World (..), (!!!))
+import Game (Entity (ePos, eTexture), Map (..), Player (pEnt), State (..), Tile (Tile), World (..), (!!!))
 import Graphics.Gloss (Picture, Point, circle, color, pictures, translate, yellow)
 
 screenPositionToWorldPosition :: State World -> Point -> State World
@@ -35,3 +35,10 @@ renderMap state = pictures $ renderTile <$> tiles
         x' = (x - y) * tileSize
         y' = (x + y) * halfTileSize
         tex = worldTiles M.! texPath
+
+renderPlayer :: State World -> Picture
+renderPlayer state = translate px py texture
+  where
+    playerEntity = pEnt $ wPlayer $ sData state
+    (px, py) = ePos playerEntity
+    texture = eTexture playerEntity
