@@ -36,7 +36,8 @@ data State a = State
   { sData :: a,
     sKeys :: S.Set Key,
     updateTimer :: Float,
-    playerAction :: Action
+    playerAction :: Action,
+    lastMousePosition :: Point
   }
   deriving (Show)
 
@@ -112,7 +113,7 @@ data EnemyState = EIdle | EFollow | EAttack -- TODO
 data Enemy = Melee {eEnt :: Entity} | Ranged {eEnt :: Entity} deriving (Show)
 
 updateEnemy :: State World -> Enemy -> Enemy
-updateEnemy (State world _ _ _) enemy
+updateEnemy (State world _ _ _ _) enemy
   | playerDist == 0 = error "Impossible colision"
   | playerDist == 1 = enemy -- TODO: Cause damage to player
   | otherwise = Melee $ moveEntityTowards (eEnt enemy) playerDir -- TODO: Support ranged
@@ -196,7 +197,8 @@ newState maps pictureMap tiles =
           },
       sKeys = S.empty,
       updateTimer = 0.0,
-      playerAction = NoAction
+      playerAction = NoAction,
+      lastMousePosition = (0, 0)
     }
 
 getTileFromName :: String -> [Tile] -> Tile
