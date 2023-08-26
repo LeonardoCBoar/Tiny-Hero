@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Config (fps, assetsFolder, tilesFolder, solidTilesFolder, nonSolidTilesFolder, mapsFolder, scalingFactor, tileSize) where
+module Config (fps, assetsFolder, tilesFolder, mapsFolder, scalingFactor, tileSize, halfTileSize) where
 
 import System.FilePath ((</>))
 
@@ -13,6 +13,9 @@ scalingFactor = 4
 tileSize :: Float
 tileSize = 16
 
+halfTileSize :: Float
+halfTileSize = tileSize / 2
+
 assetsFolder :: FilePath
 assetsFolder = "assets"
 
@@ -21,12 +24,6 @@ imagesFolder = assetsFolder </> "images"
 
 tilesFolder :: FilePath
 tilesFolder = imagesFolder </> "tiles"
-
-solidTilesFolder :: FilePath
-solidTilesFolder = tilesFolder </> "solid"
-
-nonSolidTilesFolder :: FilePath
-nonSolidTilesFolder = tilesFolder </> "non-solid"
 
 mapsFolder :: FilePath
 mapsFolder = assetsFolder </> "maps"

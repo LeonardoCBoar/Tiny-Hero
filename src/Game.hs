@@ -8,9 +8,10 @@ module Game
     World (..),
     Player (..),
     Enemy (..),
-    Entity(..),
+    Entity (..),
     Action (..),
     Map (..),
+    Tile (..),
     isValidAction,
     updatePlayer,
     updateWorld,
@@ -18,9 +19,6 @@ module Game
     insertKey,
     deleteKey,
     newState,
-    tilesFromChar,
-    withMap,
-    getNeighbors,
     (!!!),
   )
 where
@@ -30,7 +28,6 @@ import Data.Set qualified as S
 import Debug.Trace (trace)
 import GHC.Generics
 import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point, SpecialKey (..))
-import Tile (Tile (..))
 
 data State a = State
   { sData :: a,
@@ -56,24 +53,24 @@ isValidAction NoAction = False
 isValidAction _ = True
 
 data Stats = Stats
-  {
-    maxLife :: Integer,
+  { maxLife :: Integer,
     life :: Integer,
     attack :: Integer
-  } deriving (Show)
+  }
+  deriving (Show)
 
 data Entity = Entity
-  {
-    ePos :: Point,
-    eId :: Integer, --TODO: Implement unique IDs
+  { ePos :: Point,
+    eId :: Integer, -- TODO: Implement unique IDs
     eStats :: Stats
-  } deriving (Show)
+  }
+  deriving (Show)
 
 pointDiff :: Point -> Point -> Point
 pointDiff (originX, originY) (targetX, targetY) = (targetX - originX, targetY - originY)
 
 manhattanDist :: Point -> Integer
-manhattanDist (x, y) = abs(round x + round y)
+manhattanDist (x, y) = abs (round x + round y)
 
 newEntity :: Point -> Integer -> Integer -> Entity
 newEntity startPos startLife attack = Entity startPos 0 (Stats startLife startLife attack)
@@ -87,11 +84,18 @@ moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
 
 moveEntityTowards :: Entity -> Point -> Entity -- TODO: Check collisions
 moveEntityTowards entity (distanceX, distanceY)
-  | abs distanceX  >= abs distanceY = do trace (show distanceX ++ " > " ++ show distanceY) 
-                                          moveEntity entity (distanceX / abs distanceX, 0)
-  | otherwise = do trace (show distanceX ++ " < " ++ show distanceY)
-                                          moveEntity entity (0,distanceY / abs distanceY)
-
+  | abs distanceX >= abs distanceY = do
+      trace
+        (show distanceX ++ " > " ++ show distanceY)
+        moveEntity
+        entity
+        (distanceX / abs distanceX, 0)
+  | otherwise = do
+      trace
+        (show distanceX ++ " < " ++ show distanceY)
+        moveEntity
+        entity
+        (0, distanceY / abs distanceY)
 
 data Player = Player {pEnt :: Entity}
   deriving (Show)
@@ -102,13 +106,13 @@ updatePlayer _ player = player
 
 data EnemyState = EIdle | EFollow | EAttack -- TODO
 
-data Enemy = Melee {eEnt :: Entity} | Ranged { eEnt :: Entity} deriving (Show)
+data Enemy = Melee {eEnt :: Entity} | Ranged {eEnt :: Entity} deriving (Show)
 
 updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy (State world _ _ _) enemy
   | playerDist == 0 = error "Impossible colision"
   | playerDist == 1 = enemy -- TODO: Cause damage to player
-  | otherwise = Melee $ moveEntityTowards (eEnt enemy) playerDir --TODO: Support ranged
+  | otherwise = Melee $ moveEntityTowards (eEnt enemy) playerDir -- TODO: Support ranged
   where
     playerDist = manhattanDist playerDir
     playerDir = pointDiff enemyPos playerPos
@@ -116,14 +120,12 @@ updateEnemy (State world _ _ _) enemy
     playerPos = ePos $ pEnt player
     player = wPlayer world
 
-
 updateWorld :: State World -> World
 updateWorld state = world {wPlayer = player, wEnemies = enemies}
   where
     world = sData state
     player = updatePlayer (playerAction state) (wPlayer world)
     enemies = map (updateEnemy state) (wEnemies world)
-
 
 newtype Map a = Map
   { mTiles :: [[a]]
@@ -146,10 +148,12 @@ instance Applicative Map where
   Map [[f]] <*> Map values = Map $ map (map f) values
   Map fs <*> Map values = Map $ zipWith (zipWith ($)) fs values
 
+data Tile = Tile {tTexture :: Picture} deriving (Show)
+
 data World = World
   { wPlayer :: Player,
     wTiles :: [Tile],
-    wMap :: Map Tile,
+    wMaps :: [Map Tile],
     wEnemies :: [Enemy]
   }
   deriving (Show)
@@ -157,58 +161,26 @@ data World = World
 (!!!) :: Map a -> Point -> a
 Map {mTiles = tiles} !!! (x, y) = (tiles !! floor y) !! floor x
 
-findTile :: String -> [Tile] -> Tile
-findTile name tiles =
-  head $
-    filter
-      ( \t -> case t of
-          EmptyTile -> False
-          _ -> tName t == name
-      )
-      tiles
-
 newState :: [Tile] -> State World
 newState tiles =
   State
     { sData =
         World
           { wPlayer =
-              Player (newEntity (0,0) 10 2),
+              Player (newEntity (0, 0) 10 2),
+            wEnemies = [Melee (newEntity (10, 10) 2 1)],
             wTiles = tiles,
-            wMap = Map {mTiles = []},
-            wEnemies = [Melee (newEntity (10,10) 2 1)]
+            wMaps =
+              [ Map
+                  { mTiles =
+                      [ [head tiles, head tiles, head tiles],
+                        [head tiles, head tiles, head tiles],
+                        [head tiles, head tiles, head tiles]
+                      ]
+                  }
+              ]
           },
       sKeys = S.empty,
       updateTimer = 0.0,
       playerAction = NoAction
     }
-
-withMap :: Map Tile -> State World -> State World
-withMap map' state = state {sData = world {wMap = map'}}
-  where
-    world = sData state
-
-tilesFromChar :: State World -> Char -> Tile
-tilesFromChar state c
-  | c == ' ' = EmptyTile
-  | otherwise = findTile name tiles
-  where
-    tiles = wTiles $ sData state
-    name = case c of
-      'N' -> "dirt"
-      'W' -> "wall"
-      'F' -> "sand"
-      _ -> "error: " ++ [c]
-
-getNeighbors :: Point -> Int -> Int -> [Point]
-getNeighbors (x, y) mapWidth mapHeight = filter isValidNeighbor [topRight, topMiddle, topLeft, middleRight, middleLeft, bottomRight, bottomMiddle, bottomLeft]
-  where
-    isValidNeighbor (x, y) = x >= 0 && x < fromIntegral mapWidth && y >= 0 && y < fromIntegral mapHeight
-    topRight = (x + 1, y + 1)
-    topMiddle = (x, y + 1)
-    topLeft = (x - 1, y + 1)
-    middleRight = (x + 1, y)
-    middleLeft = (x - 1, y)
-    bottomRight = (x + 1, y - 1)
-    bottomMiddle = (x, y - 1)
-    bottomLeft = (x - 1, y - 1)
