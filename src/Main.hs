@@ -28,7 +28,7 @@ import Game
     updateWorld,
   )
 import Graphics.Gloss (Display (InWindow), Picture, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
-import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (SpecialKey), KeyState (Down, Up), SpecialKey (..))
+import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
 import Renderer (renderMap)
 import System.Directory (getDirectoryContents)
 import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
@@ -51,6 +51,10 @@ updateInterval :: Float
 updateInterval = 0.5
 
 handleEvents :: Event -> State World -> State World
+-- handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = trace ("Tile X: " ++ show tileX ++ " | Tile Y: " ++ show tileY) state
+--   where
+--     tileX = (mouseY - mouseX) * halfTileSize
+--     tileY = (mouseY + mouseX) * halfTileSize
 handleEvents (EventKey key keyState _ _) state
   | updateTimer state < updateInterval = state
   | keyState == Down && key `elem` actionKeys = state {playerAction = getActionFromKey key}
@@ -60,6 +64,23 @@ handleEvents (EventKey key keyState _ _) state
   where
     actionKeys = [SpecialKey KeySpace, SpecialKey KeyUp, SpecialKey KeyDown, SpecialKey KeyLeft, SpecialKey KeyRight]
 handleEvents _ state = state
+
+{-
+x' = (x - y) * 2s
+x' = 2s * x - 2s * y
+2s * y = 2s * x - x'
+y = x - x' / 2s
+y = (y' - x' / 2) / 2s
+y = (y' - x') * s
+
+y' = (x + y) * s
+y' = (x + x - x' / 2s) * s
+y' = 2sx - x' / 2
+2sx = y' + x' / 2
+x = (y' + x' / 2) / 2s
+x = (y' + x') * s
+
+-}
 
 update :: Float -> State World -> State World
 update dt state

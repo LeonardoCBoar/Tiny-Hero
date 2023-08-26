@@ -213,3 +213,6 @@ createMaps charMaps tiles = map createMap charMaps
 
     createMap :: Map Char -> Map Tile
     createMap = fmap createTile
+
+-- map.x = (screen.x / TILE_WIDTH_HALF + screen.y / TILE_HEIGHT_HALF) /2;
+-- map.y = (screen.y / TILE_HEIGHT_HALF -(screen.x / TILE_WIDTH_HALF)) /2;
