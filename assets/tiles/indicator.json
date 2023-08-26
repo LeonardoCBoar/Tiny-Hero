@@ -1,0 +1,5 @@
+{
+  "name": "Indicator",
+  "texture": "assets/images/tiles/indicator.bmp",
+  "isWalkable": false
+}

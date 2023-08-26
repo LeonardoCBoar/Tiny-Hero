@@ -16,7 +16,7 @@ import Game
     Entity (..),
     Map (..),
     Player (..),
-    State (State, playerAction, sData, updateTimer),
+    State (State, lastMousePosition, playerAction, sData, updateTimer),
     Tile (..),
     World (World, wCurrentMap, wEnemies, wMaps, wPlayer),
     createMaps,
@@ -54,7 +54,13 @@ updateInterval :: Float
 updateInterval = 0.5
 
 handleEvents :: Event -> State World -> State World
-handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = screenPositionToWorldPosition state (mouseX, mouseY)
+handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = state'
+  where
+    (x, y) = screenPositionToWorldPosition (mouseX, mouseY)
+    world = sData state
+    player = wPlayer world
+    playerEntity = pEnt player
+    state' = state {lastMousePosition = (x, y), sData = world {wPlayer = player {pEnt = playerEntity {ePos = (x, y)}}}}
 handleEvents (EventKey key keyState _ _) state
   | updateTimer state < updateInterval = state
   | keyState == Down && key `elem` actionKeys = state {playerAction = getActionFromKey key}

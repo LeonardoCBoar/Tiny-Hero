@@ -10,8 +10,8 @@ import Data.Map qualified as M
 import Game (Entity (ePos, eTexture), Map (..), Player (pEnt), State (..), Tile (Tile), World (..), (!!!))
 import Graphics.Gloss (Picture, Point, circle, color, pictures, translate, yellow)
 
-screenPositionToWorldPosition :: State World -> Point -> State World
-screenPositionToWorldPosition state (mouseX, mouseY) = state {lastMousePosition = (fromIntegral x, fromIntegral y)}
+screenPositionToWorldPosition :: Point -> Point
+screenPositionToWorldPosition (mouseX, mouseY) = (fromIntegral x, fromIntegral y)
   where
     rmx = (fromIntegral . floor) mouseX
     rmy = (fromIntegral . floor) mouseY

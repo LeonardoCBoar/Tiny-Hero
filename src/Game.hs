@@ -102,11 +102,11 @@ moveEntityTowards entity (distanceX, distanceY)
         entity
         (0, distanceY / abs distanceY)
 
-data Player = Player {pEnt :: Entity}
+data Player = Player {pEnt :: Entity, pMaxMoveDistance :: Int}
   deriving (Show)
 
 updatePlayer :: Action -> Player -> Player
-updatePlayer (Move dir) (Player ent) = Player $ moveEntity ent dir
+updatePlayer (Move dir) (Player ent moveDistance) = Player (moveEntity ent dir) moveDistance
 updatePlayer _ player = player
 
 data EnemyState = EIdle | EFollow | EAttack -- TODO
@@ -115,7 +115,7 @@ data Enemy = Melee {eEnt :: Entity} | Ranged {eEnt :: Entity} deriving (Show)
 
 updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy (State world _ _ _ _) enemy
-  | playerDist == 0 = error "Impossible colision"
+  | playerDist == 0 = error "Impossible collision"
   | playerDist == 1 = enemy -- TODO: Cause damage to player
   | otherwise = Melee $ moveEntityTowards (eEnt enemy) playerDir -- TODO: Support ranged
   where
@@ -189,7 +189,7 @@ newState playerPicture maps pictureMap tiles =
     { sData =
         World
           { wPlayer =
-              Player (newEntity (0, 0) 10 2 playerPicture),
+              Player (newEntity (4, 0) 10 2 playerPicture) 2,
             wEnemies = [Melee (newEntity (10, 10) 2 1 undefined)], -- TODO: load enemies sprites
             wTiles = tiles,
             wPictureTileMap = pictureMap,
