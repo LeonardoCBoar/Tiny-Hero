@@ -18,7 +18,7 @@ import Game
     Player (..),
     State (State, playerAction, sData, updateTimer),
     Tile (..),
-    World (World, wEnemies, wPlayer),
+    World (World, wCurrentMap, wEnemies, wMaps, wPlayer),
     createMaps,
     deleteKey,
     insertKey,
@@ -26,6 +26,7 @@ import Game
     newState,
     updatePlayer,
     updateWorld,
+    (!!!),
   )
 import Graphics.Gloss (Display (InWindow), Picture, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
@@ -51,10 +52,15 @@ updateInterval :: Float
 updateInterval = 0.5
 
 handleEvents :: Event -> State World -> State World
--- handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = trace ("Tile X: " ++ show tileX ++ " | Tile Y: " ++ show tileY) state
---   where
---     tileX = (mouseY - mouseX) * halfTileSize
---     tileY = (mouseY + mouseX) * halfTileSize
+handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = trace ("Mouse: " ++ show x ++ ", " ++ show y ++ " | " ++ tName tile) state
+  where
+    world = sData state
+    currentMap = (!! wCurrentMap world) $ wMaps world
+    rmx = (fromIntegral . floor) mouseX
+    rmy = (fromIntegral . floor) mouseY
+    x = floor $ (1 / (scalingFactor * tileSize)) * (rmx / 2 + rmy)
+    y = floor $ (1 / (scalingFactor * tileSize)) * (rmy - rmx / 2)
+    tile = currentMap !!! (fromIntegral x, fromIntegral y)
 handleEvents (EventKey key keyState _ _) state
   | updateTimer state < updateInterval = state
   | keyState == Down && key `elem` actionKeys = state {playerAction = getActionFromKey key}
