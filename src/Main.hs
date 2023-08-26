@@ -29,7 +29,7 @@ import Game
     (!!!),
   )
 import Graphics.Gloss (Display (InWindow), Picture, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
-import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
+import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
 import Renderer (renderMap, renderPlayer, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
 import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
@@ -66,8 +66,11 @@ handleEvents (EventKey key keyState _ _) state
   | keyState == Down && key `elem` actionKeys = state {playerAction = getActionFromKey key}
   | keyState == Down = insertKey key state
   | keyState == Up = deleteKey key state
+  | key == Char 'n' = state {sData = world {wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
+  | key == Char 'p' = state {sData = world {wCurrentMap = (wCurrentMap world - 1) `mod` length (wMaps world)}}
   | otherwise = state
   where
+    world = sData state
     actionKeys = [SpecialKey KeySpace, SpecialKey KeyUp, SpecialKey KeyDown, SpecialKey KeyLeft, SpecialKey KeyRight]
 handleEvents _ state = state
 
@@ -129,8 +132,6 @@ main =
 
     playerPicture <- loadBMP (charactersFolder </> "knight.bmp")
     let window = InWindow "My Window" (640, 480) (100, 100)
-
-    -- let positions = reverse [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2), (2, 2)]
     let initialState = newState playerPicture gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update

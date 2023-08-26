@@ -193,7 +193,7 @@ newState playerPicture maps pictureMap tiles =
             wEnemies = [Melee (newEntity (10, 10) 2 1 undefined)], -- TODO: load enemies sprites
             wTiles = tiles,
             wPictureTileMap = pictureMap,
-            wCurrentMap = 0,
+            wCurrentMap = 1,
             wMaps = maps
           },
       sKeys = S.empty,
