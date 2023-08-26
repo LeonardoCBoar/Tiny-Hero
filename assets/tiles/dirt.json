@@ -1,0 +1,5 @@
+{
+  "name": "Dirt",
+  "texture": "assets/images/tiles/dirt.bmp",
+  "isWalkable": true
+}

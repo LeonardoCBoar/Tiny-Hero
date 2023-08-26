@@ -20,14 +20,17 @@ module Game
     deleteKey,
     newState,
     (!!!),
+    createMaps,
   )
 where
 
 import Data.Aeson hiding (Key)
+import Data.Map qualified as M
 import Data.Set qualified as S
 import Debug.Trace (trace)
 import GHC.Generics
 import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point, SpecialKey (..))
+import System.Random
 
 data State a = State
   { sData :: a,
@@ -148,12 +151,29 @@ instance Applicative Map where
   Map [[f]] <*> Map values = Map $ map (map f) values
   Map fs <*> Map values = Map $ zipWith (zipWith ($)) fs values
 
-data Tile = Tile {tTexture :: Picture} deriving (Show)
+data Tile = Tile
+  { tName :: String,
+    tTexture :: String,
+    tWalkable :: Bool
+  }
+  deriving (Show, Generic)
+
+instance ToJSON Tile where
+  toEncoding (Tile name texture walkable) = pairs ("name" .= name <> "texture" .= texture <> "walkable" .= walkable)
+
+instance FromJSON Tile where
+  parseJSON = withObject "Tile" $ \o -> do
+    name <- o .: "name"
+    texture <- o .: "texture"
+    walkable <- o .: "isWalkable"
+    return Tile {tName = name, tTexture = texture, tWalkable = walkable}
 
 data World = World
   { wPlayer :: Player,
     wTiles :: [Tile],
+    wPictureTileMap :: M.Map String Picture,
     wMaps :: [Map Tile],
+    wCurrentMap :: Int,
     wEnemies :: [Enemy]
   }
   deriving (Show)
@@ -161,8 +181,8 @@ data World = World
 (!!!) :: Map a -> Point -> a
 Map {mTiles = tiles} !!! (x, y) = (tiles !! floor y) !! floor x
 
-newState :: [Tile] -> State World
-newState tiles =
+newState :: [Map Tile] -> M.Map String Picture -> [Tile] -> State World
+newState maps pictureMap tiles =
   State
     { sData =
         World
@@ -170,17 +190,26 @@ newState tiles =
               Player (newEntity (0, 0) 10 2),
             wEnemies = [Melee (newEntity (10, 10) 2 1)],
             wTiles = tiles,
-            wMaps =
-              [ Map
-                  { mTiles =
-                      [ [head tiles, head tiles, head tiles],
-                        [head tiles, head tiles, head tiles],
-                        [head tiles, head tiles, head tiles]
-                      ]
-                  }
-              ]
+            wPictureTileMap = pictureMap,
+            wCurrentMap = 0,
+            wMaps = maps
           },
       sKeys = S.empty,
       updateTimer = 0.0,
       playerAction = NoAction
     }
+
+getTileFromName :: String -> [Tile] -> Tile
+getTileFromName name tiles = head $ filter (\tile -> tName tile == name) tiles
+
+createMaps :: [Map Char] -> [Tile] -> [Map Tile]
+createMaps charMaps tiles = map createMap charMaps
+  where
+    createTile :: Char -> Tile
+    createTile char = case char of
+      'D' -> getTileFromName "Dirt" tiles
+      'W' -> getTileFromName "Water" tiles
+      _ -> undefined
+
+    createMap :: Map Char -> Map Tile
+    createMap = fmap createTile

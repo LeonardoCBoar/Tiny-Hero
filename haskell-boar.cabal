@@ -26,6 +26,7 @@ executable haskell-boar
                     ,  filepath
                     ,  bytestring
                     ,  aeson
+                    ,  random
   ghc-options:         -Wall
                        -Wcompat
                        -Widentities

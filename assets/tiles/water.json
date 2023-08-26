@@ -1,0 +1,5 @@
+{
+  "name": "Water",
+  "texture": "assets/images/tiles/water.bmp",
+  "isWalkable": false
+}

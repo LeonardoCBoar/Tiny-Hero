@@ -19,6 +19,7 @@ import Game
     State (State, playerAction, sData, updateTimer),
     Tile (..),
     World (World, wEnemies, wPlayer),
+    createMaps,
     deleteKey,
     insertKey,
     isValidAction,
@@ -75,21 +76,49 @@ update dt state
     action = playerAction state
     curUpdateTimer = updateTimer state + dt
 
-isBmpFile :: FilePath -> Bool
-isBmpFile path = snd (splitExtension path) == ".bmp"
+hasExt :: FilePath -> String -> Bool
+hasExt path ext = snd (splitExtension path) == ext
+
+isFile :: FilePath -> Bool
+isFile path = path /= "." && path /= ".."
 
 main :: IO ()
 main =
   do
     tilesContent <- getDirectoryContents tilesFolder
-    let tiles = map (tilesFolder </>) $ filter isBmpFile tilesContent
+    let tiles = map (tilesFolder </>) $ filter isFile tilesContent
 
-    loadedTiles <- mapM loadBMP tiles
-    let gameTiles = map Tile loadedTiles
+    gameTiles <- mapM loadTile tiles
+    tilePictures <- mapM (loadBMP . tTexture) gameTiles
+
+    let zippedTiles = zip (map tTexture gameTiles) tilePictures
+    let tileMap = M.fromList zippedTiles
+
+    mapsContent <- getDirectoryContents mapsFolder
+    let maps = map (mapsFolder </>) $ filter isFile mapsContent
+
+    charMaps <- mapM loadMap maps
+    let gameMaps = createMaps charMaps gameTiles
 
     let window = InWindow "My Window" (640, 480) (100, 100)
 
     -- let positions = reverse [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2), (2, 2)]
-    let initialState = newState gameTiles
+    let initialState = newState gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update
+  where
+    loadTile tilePath = do
+      tileJson <- BSL.readFile tilePath
+      let tile = decode tileJson :: Maybe Tile
+
+      case tile of
+        Just t -> return t
+        Nothing -> error $ "Could not load tile " ++ tilePath
+
+    loadMap mapPath = do
+      mapContent <- BSL.readFile mapPath
+      let map_ = decode mapContent :: Maybe (Map Char)
+
+      case map_ of
+        Just m -> return m
+        Nothing -> error $ "Could not load map " ++ mapPath
