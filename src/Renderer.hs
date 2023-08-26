@@ -37,8 +37,10 @@ renderMap state = pictures $ renderTile <$> tiles
         tex = worldTiles M.! texPath
 
 renderPlayer :: State World -> Picture
-renderPlayer state = translate px py texture
+renderPlayer state = translate x y texture
   where
     playerEntity = pEnt $ wPlayer $ sData state
     (px, py) = ePos playerEntity
+    x = (px - py) * tileSize
+    y = (px + py) * halfTileSize + tileSize
     texture = eTexture playerEntity
