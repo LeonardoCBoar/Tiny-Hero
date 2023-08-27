@@ -30,6 +30,7 @@ module Game
     isTileWalkable,
     findTilesInDistance,
     findWalkableTilesInDistance,
+    getMapEnemies,
   )
 where
 
@@ -48,7 +49,6 @@ data State a = State
     lastMousePosition :: Point,
     showAttackAnimation :: Bool
   }
-  deriving (Show)
 
 isKeyPressed :: Key -> State a -> Bool
 isKeyPressed k = S.member k . sKeys
@@ -118,7 +118,7 @@ data EnemyState = EIdle | EFollow | EAttack deriving (Show, Eq)
 data Enemy
   = Melee {eEnt :: Entity, eState :: EnemyState}
   | Ranged {eEnt :: Entity, eState :: EnemyState}
-  deriving (Show)
+  deriving (Show, Generic)
 
 class Damageable a where
   damage :: a -> Int -> Maybe a
@@ -185,8 +185,36 @@ updateWorld state = world {wPlayer = player, wEnemies = enemies, wMode = mode}
     enemiesAttack = sumEnemiesAttack enemies
     player = updatePlayer pAction (wPlayer world) enemiesAttack
 
-newtype Map a = Map
-  { mTiles :: [[a]]
+data MapEnemyDefinition = MapEnemyDefinition
+  { enemyType :: String,
+    enemyLife :: Int,
+    enemyAttack :: Int,
+    enemyPos :: Point
+  }
+  deriving (Show, Generic)
+
+instance ToJSON MapEnemyDefinition where
+  toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON MapEnemyDefinition where
+  parseJSON = withObject "MapEnemyDefinition" $ \o -> do
+    type_ <- o .: "type"
+    life <- o .: "life"
+    attack <- o .: "attack"
+    pos <- o .: "pos"
+    return MapEnemyDefinition {enemyType = type_, enemyLife = life, enemyAttack = attack, enemyPos = pos}
+
+createEnemyFromDefinition :: State World -> MapEnemyDefinition -> Enemy
+createEnemyFromDefinition state def = case enemyType def of
+  "melee" -> Melee (newEntity (enemyPos def) (enemyLife def) (enemyAttack def) (head textures)) EIdle
+  "ranged" -> Ranged (newEntity (enemyPos def) (enemyLife def) (enemyAttack def) (textures !! 1)) EIdle
+  _ -> undefined
+  where
+    textures = wEnemyPictures $ sData state
+
+data Map a = Map
+  { mTiles :: [[a]],
+    enemies :: [MapEnemyDefinition]
   }
   deriving (Show, Generic)
 
@@ -196,15 +224,17 @@ instance (ToJSON a) => ToJSON (Map a) where
 instance (FromJSON a) => FromJSON (Map a) where
   parseJSON = withObject "Map" $ \o -> do
     jsonTiles <- o .: "tiles"
-    return Map {mTiles = jsonTiles}
+    enemies <- o .: "enemies"
+
+    return Map {mTiles = jsonTiles, enemies = enemies}
 
 instance Functor Map where
-  fmap f Map {mTiles = tiles} = Map {mTiles = map (map f) tiles}
+  fmap f Map {mTiles = tiles, enemies = enemies} = Map {mTiles = map (map f) tiles, enemies = enemies}
 
 instance Applicative Map where
-  pure a = Map [[a]]
-  Map [[f]] <*> Map values = Map $ map (map f) values
-  Map fs <*> Map values = Map $ zipWith (zipWith ($)) fs values
+  pure a = Map [[a]] []
+  Map [[f]] _ <*> Map values eCount = Map (map (map f) values) eCount
+  Map fs _ <*> Map values eCount = Map (zipWith (zipWith ($)) fs values) eCount
 
 data Tile
   = Tile
@@ -240,7 +270,8 @@ data World = World
     wCurrentMap :: Int,
     wEnemies :: [Enemy],
     wMode :: Mode,
-    wSword :: Picture
+    wSword :: Picture,
+    wEnemyPictures :: [Picture]
   }
   deriving (Show)
 
@@ -272,30 +303,35 @@ findWalkableTilesInDistance map' (px, py) distance =
     (\tilePos -> isTileWalkable (map' !!! tilePos))
     (findTilesInDistance map' (px, py) distance)
 
-newState :: (Picture, Picture, Picture, Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
-newState (playerPicture, meleeEnemyPicture, rangedEnemyPicture, sword) maps pictureMap tiles =
-  State
-    { sData =
-        World
-          { wPlayer =
-              Player (newEntity (4, 0) 10 2 playerPicture) 2 1,
-            wEnemies = [
-                        newMelee meleeEnemyPicture (0,3),
-                        newRanged rangedEnemyPicture (0,4)
-                        ],
-            wTiles = tiles,
-            wPictureTileMap = pictureMap,
-            wCurrentMap = 0,
-            wMaps = maps,
-            wMode = NoMode,
-            wSword = sword
-          },
-      sKeys = S.empty,
-      updateTimer = 0.0,
-      playerAction = NoAction,
-      lastMousePosition = (0, 0),
-      showAttackAnimation = False
-    }
+getMapEnemies :: State World -> Map a -> [Enemy]
+getMapEnemies state map' = map (createEnemyFromDefinition state) (enemies map')
+
+newState :: (Picture, Picture) -> [Picture] -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
+newState (playerPicture, sword) enemyPictures maps pictureMap tiles = state {sData = world {wEnemies = enemies}}
+  where
+    state =
+      State
+        { sData =
+            World
+              { wPlayer =
+                  Player (newEntity (4, 0) 10 2 playerPicture) 2 1,
+                wEnemies = [], -- TODO: load enemies sprites
+                wTiles = tiles,
+                wPictureTileMap = pictureMap,
+                wCurrentMap = 0,
+                wMaps = maps,
+                wMode = NoMode,
+                wSword = sword,
+                wEnemyPictures = enemyPictures
+              },
+          sKeys = S.empty,
+          updateTimer = 0.0,
+          playerAction = NoAction,
+          lastMousePosition = (0, 0),
+          showAttackAnimation = False
+        }
+    world = sData state
+    enemies = getMapEnemies state (head maps)
 
 newMelee :: Picture -> Point -> Enemy
 newMelee sprite pos = Melee (newEntity pos 2 2 sprite) EIdle

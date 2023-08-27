@@ -16,6 +16,7 @@ import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButto
 import Renderer (renderAttackAnimation, renderEnemies, renderHUD, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
 import System.FilePath
+import System.Random (Random (randomR), newStdGen)
 
 -- REMOVER DEPOIS DE TESTAR!!!!!!!!!!!!!
 -- TODO: REMOVER TRACES ANTES DE ENTREGAR O PROJETO
@@ -121,12 +122,14 @@ main =
     let gameMaps = createMaps charMaps gameTiles
 
     playerPicture <- loadBMP (charactersFolder </> "knight.bmp")
-    meleeEnemyPicture <- loadBMP (charactersFolder </> "ogre.bmp")
-    rangedEnemyPicture <- loadBMP (charactersFolder </> "mage.bmp")
+
+    enemyPicture1 <- loadBMP (charactersFolder </> "ogre.bmp")
+    enemyPicture2 <- loadBMP (charactersFolder </> "mage.bmp")
+
     swordPicture <- loadBMP (itemsFolder </> "sword.bmp")
 
     let window = InWindow "My Window" (1000, 800) (100, 100)
-    let initialState = newState (playerPicture, meleeEnemyPicture, rangedEnemyPicture, swordPicture) gameMaps tileMap gameTiles
+    let initialState = newState (playerPicture, swordPicture) [enemyPicture1, enemyPicture2] gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update
   where
