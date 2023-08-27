@@ -3,11 +3,11 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Renderer (renderMap, renderPlayer, screenPositionToWorldPosition) where
+module Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPosition) where
 
 import Config (halfTileSize, scalingFactor, tileSize)
 import Data.Map qualified as M
-import Game (Entity (ePos, eTexture), Map (..), Player (pEnt), State (..), Tile (Tile), World (..), (!!!))
+import Game (Entity (ePos, eTexture), Map (..), Player (pEnt), Enemy(..), State (..), Tile (Tile), World (..), (!!!))
 import Graphics.Gloss (Picture, Point, circle, color, pictures, translate, yellow)
 
 screenPositionToWorldPosition :: Point -> Point
@@ -37,10 +37,19 @@ renderMap state = pictures $ renderTile <$> tiles
         tex = worldTiles M.! texPath
 
 renderPlayer :: State World -> Picture
-renderPlayer state = translate x y texture
+renderPlayer (State world _ _ _ _) = renderEntity playerEntity
   where
-    playerEntity = pEnt $ wPlayer $ sData state
-    (px, py) = ePos playerEntity
+    playerEntity = pEnt $ wPlayer world
+
+renderEnemies :: State World -> Picture
+renderEnemies (State world _ _ _ _) = pictures [renderEntity $ eEnt enemy | enemy <- enemies]
+  where 
+    enemies = wEnemies world
+
+renderEntity :: Entity -> Picture
+renderEntity entity = translate x y texture
+  where
+    (px, py) = ePos entity
     x = (px - py) * tileSize
     y = (px + py) * halfTileSize + tileSize
-    texture = eTexture playerEntity
+    texture = eTexture entity 

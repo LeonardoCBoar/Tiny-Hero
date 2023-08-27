@@ -30,7 +30,7 @@ import Game
   )
 import Graphics.Gloss (Display (InWindow), Picture, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
-import Renderer (renderMap, renderPlayer, screenPositionToWorldPosition)
+import Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
 import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
 
@@ -40,7 +40,7 @@ import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
 render :: State World -> Picture
 render state = scale scalingFactor scalingFactor $ pictures renderAll
   where
-    renderAll = map (\f -> f state) [renderMap, renderPlayer]
+    renderAll = map (\f -> f state) [renderMap, renderPlayer, renderEnemies]
 
 getActionFromKey :: Key -> Action
 getActionFromKey (SpecialKey KeyLeft) = Move (-1, 0)
@@ -131,8 +131,10 @@ main =
     let gameMaps = createMaps charMaps gameTiles
 
     playerPicture <- loadBMP (charactersFolder </> "knight.bmp")
+    meleeEnemyPicture <- loadBMP (charactersFolder </> "ogre.bmp")
+
     let window = InWindow "My Window" (640, 480) (100, 100)
-    let initialState = newState playerPicture gameMaps tileMap gameTiles
+    let initialState = newState (playerPicture, meleeEnemyPicture) gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update
   where

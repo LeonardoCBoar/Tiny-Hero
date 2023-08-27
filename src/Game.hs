@@ -183,14 +183,14 @@ data World = World
 (!!!) :: Map a -> Point -> a
 Map {mTiles = tiles} !!! (x, y) = (tiles !! floor y) !! floor x
 
-newState :: Picture -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
-newState playerPicture maps pictureMap tiles =
+newState :: (Picture,Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
+newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
   State
     { sData =
         World
           { wPlayer =
               Player (newEntity (4, 0) 10 2 playerPicture) 2,
-            wEnemies = [Melee (newEntity (10, 10) 2 1 undefined)], -- TODO: load enemies sprites
+            wEnemies = [Melee (newEntity (0, 3) 2 1 meleeEnemyPicture)], -- TODO: load enemies sprites
             wTiles = tiles,
             wPictureTileMap = pictureMap,
             wCurrentMap = 1,
