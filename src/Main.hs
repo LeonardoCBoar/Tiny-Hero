@@ -2,39 +2,19 @@
 
 module Main (main) where
 
-import Config (charactersFolder, fps, halfTileSize, mapsFolder, scalingFactor, tileSize, tilesFolder)
+import Config
 -- REMOVER DEPOIS DE TESTAR!!!!!!!!!!!!!
 
 import Data.Aeson hiding (Key)
 import Data.ByteString.Lazy qualified as BSL
-import Data.List (break, groupBy)
 import Data.Map qualified as M
 import Debug.Trace
 import Game
-  ( Action (..),
-    Enemy (..),
-    Entity (..),
-    Map (..),
-    Mode (MoveMode, NoMode),
-    Player (..),
-    State (State, lastMousePosition, playerAction, sData, updateTimer),
-    Tile (..),
-    World (World, wCurrentMap, wEnemies, wMaps, wMode, wPlayer),
-    createMaps,
-    deleteKey,
-    insertKey,
-    isMapBounded,
-    isValidAction,
-    newState,
-    updatePlayer,
-    updateWorld,
-    (!!!),
-  )
-import Graphics.Gloss (Display (InWindow), Picture, Point, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
+import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
 import Renderer (renderActionsHelperText, renderEnemies, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
-import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
+import System.FilePath
 
 -- REMOVER DEPOIS DE TESTAR!!!!!!!!!!!!!
 -- TODO: REMOVER TRACES ANTES DE ENTREGAR O PROJETO
@@ -105,23 +85,6 @@ handleEvents (EventKey key keyState _ _) state
         tilesInMoveRange
 handleEvents _ state = state
 
-{-
-x' = (x - y) * 2s
-x' = 2s * x - 2s * y
-2s * y = 2s * x - x'
-y = x - x' / 2s
-y = (y' - x' / 2) / 2s
-y = (y' - x') * s
-
-y' = (x + y) * s
-y' = (x + x - x' / 2s) * s
-y' = 2sx - x' / 2
-2sx = y' + x' / 2
-x = (y' + x' / 2) / 2s
-x = (y' + x') * s
-
--}
-
 update :: Float -> State World -> State World
 update dt state
   | isValidAction action = do
@@ -136,9 +99,6 @@ update dt state
   where
     action = playerAction state
     curUpdateTimer = updateTimer state + dt
-
-hasExt :: FilePath -> String -> Bool
-hasExt path ext = snd (splitExtension path) == ext
 
 isFile :: FilePath -> Bool
 isFile path = path /= "." && path /= ".."
