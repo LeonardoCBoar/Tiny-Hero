@@ -9,7 +9,7 @@ module Game
     Player (..),
     Enemy (..),
     Entity (..),
-    Stats(..),
+    Stats (..),
     Action (..),
     Map (..),
     Tile (..),
@@ -25,16 +25,15 @@ module Game
     (!!!),
     createMaps,
     getTileFromName,
+    isTileWalkable,
   )
 where
 
 import Data.Aeson hiding (Key)
 import Data.Map qualified as M
 import Data.Set qualified as S
-import Debug.Trace (trace)
 import GHC.Generics
-import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point, SpecialKey (..))
-import System.Random
+import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point)
 
 data State a = State
   { sData :: a,
@@ -90,9 +89,9 @@ moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
     pos = ePos entity
     x = fst pos
     y = snd pos
-  
+
 attackEntity :: Entity -> Integer -> Entity
-attackEntity entity attack = entity {eStats=entStats{life=oldLife - attack}}
+attackEntity entity attack = entity {eStats = entStats {life = oldLife - attack}}
   where
     entStats = eStats entity
     oldLife = life entStats
@@ -100,7 +99,7 @@ attackEntity entity attack = entity {eStats=entStats{life=oldLife - attack}}
 moveEntityTowards :: Entity -> Point -> Entity -- TODO: Check collisions
 moveEntityTowards entity (distanceX, distanceY)
   | abs distanceX >= abs distanceY = moveEntity entity (distanceX / abs distanceX, 0)
-  | otherwise                      = moveEntity entity (0, distanceY / abs distanceY)
+  | otherwise = moveEntity entity (0, distanceY / abs distanceY)
 
 data Player = Player {pEnt :: Entity, pMaxMoveDistance :: Int}
   deriving (Show)
@@ -109,17 +108,18 @@ updatePlayer :: Action -> Player -> Integer -> Player
 updatePlayer (Move dir) (Player ent moveDistance) damage = Player (attackEntity (moveEntity ent dir) damage) moveDistance
 updatePlayer _ (Player ent moveDistance) damage = Player (attackEntity ent damage) moveDistance
 
-data EnemyState = EIdle | EFollow | EAttack  deriving (Show, Eq)
+data EnemyState = EIdle | EFollow | EAttack deriving (Show, Eq)
 
-data Enemy = 
-  Melee {eEnt :: Entity, eState :: EnemyState} 
-  | Ranged {eEnt :: Entity, eState ::EnemyState} deriving (Show)
+data Enemy
+  = Melee {eEnt :: Entity, eState :: EnemyState}
+  | Ranged {eEnt :: Entity, eState :: EnemyState}
+  deriving (Show)
 
 updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy (State world _ _ _ _) enemy
   | playerDist == 0 = error "Impossible collision"
-  | playerDist <= 1 =  enemy{eState = EAttack}
-  | otherwise =  Melee (moveEntityTowards (eEnt enemy) playerDir) EFollow -- TODO: Support ranged
+  | playerDist <= 1 = enemy {eState = EAttack}
+  | otherwise = Melee (moveEntityTowards (eEnt enemy) playerDir) EFollow -- TODO: Support ranged
   where
     playerDist = manhattanDist playerDir
     playerDir = pointDiff enemyPos playerPos
@@ -164,15 +164,22 @@ instance Applicative Map where
   Map [[f]] <*> Map values = Map $ map (map f) values
   Map fs <*> Map values = Map $ zipWith (zipWith ($)) fs values
 
-data Tile = Tile
-  { tName :: String,
-    tTexture :: String,
-    tWalkable :: Bool
-  }
+data Tile
+  = Tile
+      { tName :: String,
+        tTexture :: String,
+        tWalkable :: Bool
+      }
+  | EmptyTile
   deriving (Show, Generic)
+
+isTileWalkable :: Tile -> Bool
+isTileWalkable (Tile _ _ walkable) = walkable
+isTileWalkable EmptyTile = False
 
 instance ToJSON Tile where
   toEncoding (Tile name texture walkable) = pairs ("name" .= name <> "texture" .= texture <> "walkable" .= walkable)
+  toEncoding EmptyTile = error "EmptyTile is not serializable"
 
 instance FromJSON Tile where
   parseJSON = withObject "Tile" $ \o -> do
@@ -216,7 +223,7 @@ newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
             wEnemies = [Melee (newEntity (0, 3) 2 1 meleeEnemyPicture) EIdle], -- TODO: load enemies sprites
             wTiles = tiles,
             wPictureTileMap = pictureMap,
-            wCurrentMap = 1,
+            wCurrentMap = 0,
             wMaps = maps,
             wMode = NoMode
           },
@@ -236,6 +243,7 @@ createMaps charMaps tiles = map createMap charMaps
     createTile char = case char of
       'D' -> getTileFromName "Dirt" tiles
       'W' -> getTileFromName "Water" tiles
+      ' ' -> EmptyTile
       _ -> undefined
 
     createMap :: Map Char -> Map Tile

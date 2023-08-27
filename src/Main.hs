@@ -10,29 +10,9 @@ import Data.ByteString.Lazy qualified as BSL
 import Data.Map qualified as M
 import Debug.Trace
 import Game
-  ( Action (..),
-    Enemy (..),
-    Entity (..),
-    Stats(..),
-    Map (..),
-    Mode (MoveMode, NoMode),
-    Player (..),
-    State (State, lastMousePosition, playerAction, sData, updateTimer),
-    Tile (..),
-    World (World, wCurrentMap, wEnemies, wMaps, wMode, wPlayer),
-    createMaps,
-    deleteKey,
-    insertKey,
-    isMapBounded,
-    isValidAction,
-    newState,
-    updatePlayer,
-    updateWorld,
-    (!!!),
-  )
-import Graphics.Gloss (Display (InWindow), Picture, Point, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
+import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
-import Renderer (renderHUD, renderEnemies, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
+import Renderer (renderEnemies, renderHUD, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
 import System.FilePath
 
@@ -43,14 +23,6 @@ render :: State World -> Picture
 render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
   where
     renderAll = map (\f -> f state) [renderMap, renderPossibleMoves, renderPlayer, renderEnemies]
-
-getActionFromKey :: Key -> Action
-getActionFromKey (SpecialKey KeyLeft) = Move (-1, 0)
-getActionFromKey (SpecialKey KeyRight) = Move (1, 0)
-getActionFromKey (SpecialKey KeyUp) = Move (0, -1)
-getActionFromKey (SpecialKey KeyDown) = Move (0, 1)
-getActionFromKey (SpecialKey KeySpace) = Move (0, 0)
-getActionFromKey _ = NoAction
 
 updateInterval :: Float
 updateInterval = 0.5
@@ -71,11 +43,11 @@ handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state =
     (px, py) = ePos $ playerEntity
 handleEvents (EventKey key keyState _ _) state
   | updateTimer state < updateInterval = state
+  | key == Char 'n' && keyState == Down = state {sData = world {wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
   | key == Char 'm' && keyState == Down =
       if isMoveMode
         then state {sData = world {wMode = NoMode}}
         else state {sData = world {wMode = MoveMode walkableTilesInMoveRange}}
-  | keyState == Down && key `elem` actionKeys = state {playerAction = getActionFromKey key}
   | keyState == Down = insertKey key state
   | keyState == Up = deleteKey key state
   | otherwise = state
@@ -85,7 +57,6 @@ handleEvents (EventKey key keyState _ _) state
       MoveMode _ -> True
       _ -> False
 
-    actionKeys = [SpecialKey KeySpace, SpecialKey KeyUp, SpecialKey KeyDown, SpecialKey KeyLeft, SpecialKey KeyRight]
     currentMap = (!! wCurrentMap world) $ wMaps world
     player = wPlayer world
     (px, py) = ePos $ pEnt player
@@ -100,7 +71,7 @@ handleEvents (EventKey key keyState _ _) state
       filter
         ( \tilePos ->
             isMapBounded currentMap tilePos
-              && tWalkable (currentMap !!! tilePos)
+              && isTileWalkable (currentMap !!! tilePos)
         )
         tilesInMoveRange
 handleEvents _ state = state
@@ -110,7 +81,9 @@ update dt state
   | isValidAction action = do
       trace
         ( "Player: "
-            ++ show (ePos playerEnt) ++ "Life: " ++ show (life $ eStats playerEnt)
+            ++ show (ePos playerEnt)
+            ++ "Life: "
+            ++ show (life $ eStats playerEnt)
             ++ " Enemy: "
             ++ show (ePos $ eEnt $ head $ wEnemies $ sData state)
         )
@@ -145,7 +118,7 @@ main =
     playerPicture <- loadBMP (charactersFolder </> "knight.bmp")
     meleeEnemyPicture <- loadBMP (charactersFolder </> "ogre.bmp")
 
-    let window = InWindow "My Window" (640, 480) (100, 100)
+    let window = InWindow "My Window" (1000, 800) (100, 100)
     let initialState = newState (playerPicture, meleeEnemyPicture) gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update

@@ -7,8 +7,8 @@ module Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPo
 
 import Config (halfTileSize, scalingFactor, tileSize)
 import Data.Map qualified as M
-import Game (Enemy (..), Entity (ePos, eTexture, eStats),Stats(..), Map (..), Mode (MoveMode), Player (pEnt, pMaxMoveDistance), State (..), Tile (Tile, tWalkable), World (..), getTileFromName, isMapBounded, (!!!))
-import Graphics.Gloss (Picture, Point, circle, color, pictures, scale, text, translate, white, yellow, rectangleSolid, red, yellow)
+import Game
+import Graphics.Gloss
 
 screenPositionToWorldPosition :: Point -> Point
 screenPositionToWorldPosition (mouseX, mouseY) = (fromIntegral x, fromIntegral y)
@@ -18,24 +18,31 @@ screenPositionToWorldPosition (mouseX, mouseY) = (fromIntegral x, fromIntegral y
     x = floor $ (1 / (scalingFactor * tileSize)) * (rmx / 2 + rmy)
     y = floor $ (1 / (scalingFactor * tileSize)) * (rmy - rmx / 2)
 
-renderHUD :: State World -> Picture
-renderHUD (State world _ _ _ _) = pictures $ map (scale 0.2 0.2 ) [renderActionsHelperText, renderLifeBar player]
-  where player = wPlayer world
+worldPositionToScreenPosition :: Point -> Point
+worldPositionToScreenPosition (x, y) = (x', y')
+  where
+    x' = (x - y) * tileSize
+    y' = (x + y) * halfTileSize + tileSize
 
-renderLifeBar :: Player-> Picture
+renderHUD :: State World -> Picture
+renderHUD (State world _ _ _ _) = pictures $ map (scale 0.2 0.2) [renderActionsHelperText, renderLifeBar player]
+  where
+    player = wPlayer world
+
+renderLifeBar :: Player -> Picture
 renderLifeBar player = pictures [background, foreground]
-  where 
-    background = color white $ translate (-1100) (1100) $ rectangleSolid 510 110
-    foreground = color red $ translate (-1100) (1100) $ rectangleSolid (500 * playerLifeRatio) 100
+  where
+    background = color white $ translate (-1100) 1100 $ rectangleSolid 510 110
+    foreground = color red $ translate (-1100) 1100 $ rectangleSolid (500 * playerLifeRatio) 100
     playerStats = eStats $ pEnt player
     playerLifeRatio = fromInteger (life playerStats) / fromInteger (maxLife playerStats)
 
-
 renderActionsHelperText :: Picture
-renderActionsHelperText = pictures
-      [ translate (-2000) (-800) $ color white $ text "Press 'm' to enter move mode",
-        translate (-2000) (-1000) $ color white $ text "Press 'a' to enter attack mode"
-      ]
+renderActionsHelperText =
+  pictures
+    [ translate (-2000) (-800) $ color white $ text "Press 'm' to enter move mode",
+      translate (-2000) (-1000) $ color white $ text "Press 'a' to enter attack mode"
+    ]
 
 renderTile :: State World -> (Float, Float, Tile) -> Picture
 renderTile state (x, y, Tile _ texPath _) = translate x' y' tex
@@ -45,6 +52,7 @@ renderTile state (x, y, Tile _ texPath _) = translate x' y' tex
     x' = (x - y) * tileSize
     y' = (x + y) * halfTileSize
     tex = worldTiles M.! texPath
+renderTile _ (_, _, EmptyTile) = pictures []
 
 renderMap :: State World -> Picture
 renderMap state = pictures $ renderTile state <$> tiles
