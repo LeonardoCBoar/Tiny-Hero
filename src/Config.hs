@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Config (fps, assetsFolder, tilesFolder, tileImagesFolder, mapsFolder, scalingFactor, tileSize, halfTileSize, charactersFolder) where
+module Config (fps, assetsFolder, tilesFolder, tileImagesFolder, mapsFolder, scalingFactor, tileSize, halfTileSize, charactersFolder, itemsFolder) where
 
 import System.FilePath ((</>))
 
@@ -33,3 +33,6 @@ mapsFolder = assetsFolder </> "maps"
 
 charactersFolder :: FilePath
 charactersFolder = imagesFolder </> "characters"
+
+itemsFolder :: FilePath
+itemsFolder = imagesFolder </> "items"

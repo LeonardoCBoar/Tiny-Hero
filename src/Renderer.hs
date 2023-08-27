@@ -3,7 +3,17 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPosition, renderHUD, renderPossibleMoves, renderGameModeText) where
+module Renderer
+  ( renderMap,
+    renderPlayer,
+    renderEnemies,
+    screenPositionToWorldPosition,
+    renderHUD,
+    renderPossibleMoves,
+    renderGameModeText,
+    renderAttackAnimation,
+  )
+where
 
 import Config (halfTileSize, scalingFactor, tileSize)
 import Data.Map qualified as M
@@ -25,8 +35,9 @@ worldPositionToScreenPosition (x, y) = (x', y')
     y' = (x + y) * halfTileSize + tileSize
 
 renderHUD :: State World -> Picture
-renderHUD state@(State world _ _ _ _) = pictures $ map (scale 0.2 0.2) [renderActionsHelperText, renderGameModeText state, renderLifeBar player]
+renderHUD state = pictures $ map (scale 0.2 0.2) [renderActionsHelperText, renderGameModeText state, renderLifeBar player]
   where
+    world = sData state
     player = wPlayer world
 
 renderLifeBar :: Player -> Picture
@@ -83,14 +94,26 @@ renderPossibleMoves state = case mode of
     mode = wMode world
     indicatorTile = getTileFromName "Indicator" $ wTiles world
 
-renderPlayer :: State World -> Picture
-renderPlayer (State world _ _ _ _) = renderEntity playerEntity
+renderAttackAnimation :: State World -> Picture
+renderAttackAnimation state
+  | showAttackAnimation state = translate x y $ rotate (timer * 50) sword
+  | otherwise = pictures []
   where
+    (x, y) = worldPositionToScreenPosition $ lastMousePosition state
+    timer = updateTimer state
+    world = sData state
+    sword = wSword world
+
+renderPlayer :: State World -> Picture
+renderPlayer state = renderEntity playerEntity
+  where
+    world = sData state
     playerEntity = pEnt $ wPlayer world
 
 renderEnemies :: State World -> Picture
-renderEnemies (State world _ _ _ _) = pictures [renderEntity $ eEnt enemy | enemy <- enemies]
+renderEnemies state = pictures [renderEntity $ eEnt enemy | enemy <- enemies]
   where
+    world = sData state
     enemies = wEnemies world
 
 renderEntity :: Entity -> Picture

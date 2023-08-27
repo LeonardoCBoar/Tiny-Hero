@@ -45,7 +45,8 @@ data State a = State
     sKeys :: S.Set Key,
     updateTimer :: Float,
     playerAction :: Action,
-    lastMousePosition :: Point
+    lastMousePosition :: Point,
+    showAttackAnimation :: Bool
   }
   deriving (Show)
 
@@ -132,12 +133,13 @@ instance Damageable Entity where
       stats' = stats {life = life stats - value}
 
 updateEnemy :: State World -> Enemy -> Enemy
-updateEnemy (State world _ _ _ _) enemy
+updateEnemy state enemy
   | playerDist == 0 = error "Impossible collision"
   | playerDist <= 1 = enemy {eState = EAttack}
   -- \| otherwise = Melee (moveEntityTowards (eEnt enemy) playerDir) EFollow -- TODO: Support ranged
   | otherwise = Melee (moveEntityTo (eEnt enemy) closestTile) EFollow
   where
+    world = sData state
     playerDir = pointDiff enemyPos playerPos
     playerDist = manhattanDist playerDir
     enemyPos = ePos $ eEnt enemy
@@ -230,7 +232,8 @@ data World = World
     wMaps :: [Map Tile],
     wCurrentMap :: Int,
     wEnemies :: [Enemy],
-    wMode :: Mode
+    wMode :: Mode,
+    wSword :: Picture
   }
   deriving (Show)
 
@@ -262,8 +265,8 @@ findWalkableTilesInDistance map' (px, py) distance =
     (\tilePos -> isTileWalkable (map' !!! tilePos))
     (findTilesInDistance map' (px, py) distance)
 
-newState :: (Picture, Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
-newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
+newState :: (Picture, Picture, Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
+newState (playerPicture, meleeEnemyPicture, sword) maps pictureMap tiles =
   State
     { sData =
         World
@@ -274,12 +277,14 @@ newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
             wPictureTileMap = pictureMap,
             wCurrentMap = 0,
             wMaps = maps,
-            wMode = NoMode
+            wMode = NoMode,
+            wSword = sword
           },
       sKeys = S.empty,
       updateTimer = 0.0,
       playerAction = NoAction,
-      lastMousePosition = (0, 0)
+      lastMousePosition = (0, 0),
+      showAttackAnimation = False
     }
 
 getTileFromName :: String -> [Tile] -> Tile

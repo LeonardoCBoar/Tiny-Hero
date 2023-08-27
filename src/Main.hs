@@ -10,9 +10,10 @@ import Data.ByteString.Lazy qualified as BSL
 import Data.Map qualified as M
 import Debug.Trace
 import Game
+import Game (State (showAttackAnimation))
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
-import Renderer (renderEnemies, renderHUD, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
+import Renderer (renderAttackAnimation, renderEnemies, renderHUD, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
 import System.FilePath
 
@@ -22,7 +23,7 @@ import System.FilePath
 render :: State World -> Picture
 render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
   where
-    renderAll = map (\f -> f state) [renderMap, renderPossibleMoves, renderPlayer, renderEnemies]
+    renderAll = map (\f -> f state) [renderMap, renderPossibleMoves, renderPlayer, renderEnemies, renderAttackAnimation]
 
 updateInterval :: Float
 updateInterval = 0.5
@@ -35,7 +36,7 @@ handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state =
       else state {lastMousePosition = (x, y)}
   AttackMode possibleAttackTiles ->
     if (x, y) `elem` possibleAttackTiles
-      then state {lastMousePosition = (x, y), playerAction = Attack (x, y)}
+      then state {lastMousePosition = (x, y), playerAction = Attack (x, y), showAttackAnimation = True}
       else state {lastMousePosition = (x, y)}
   _ -> state
   where
@@ -91,6 +92,7 @@ update dt state
             ++ show (ePos $ eEnt $ head $ wEnemies $ sData state)
         )
         state {sData = updateWorld state, updateTimer = 0, playerAction = NoAction}
+  | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0}
   | otherwise = state {updateTimer = curUpdateTimer}
   where
     playerEnt = pEnt $ wPlayer $ sData state
@@ -120,9 +122,10 @@ main =
 
     playerPicture <- loadBMP (charactersFolder </> "knight.bmp")
     meleeEnemyPicture <- loadBMP (charactersFolder </> "ogre.bmp")
+    swordPicture <- loadBMP (itemsFolder </> "sword.bmp")
 
     let window = InWindow "My Window" (1000, 800) (100, 100)
-    let initialState = newState (playerPicture, meleeEnemyPicture) gameMaps tileMap gameTiles
+    let initialState = newState (playerPicture, meleeEnemyPicture, swordPicture) gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update
   where
