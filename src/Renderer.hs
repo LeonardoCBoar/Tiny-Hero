@@ -43,8 +43,8 @@ renderHUD state = pictures $ map (scale 0.2 0.2) [renderActionsHelperText, rende
 renderLifeBar :: Player -> Picture
 renderLifeBar player = pictures [background, foreground]
   where
-    background = color white $ translate (-1100) 1100 $ rectangleSolid 510 110
-    foreground = color red $ translate (-1100) 1100 $ rectangleSolid (500 * playerLifeRatio) 100
+    background = color white $ translate (-2150) 1900 $ rectangleSolid 510 110
+    foreground = color red $ translate (-2150) 1900 $ rectangleSolid (500 * playerLifeRatio) 100
     playerStats = eStats $ pEnt player
     playerLifeRatio = fromIntegral (life playerStats) / fromIntegral (maxLife playerStats)
 
