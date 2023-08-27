@@ -15,7 +15,7 @@ module Game
     Map (..),
     Tile (..),
     Mode (..),
-    -- Damageable (..),
+    Damageable (..),
     isValidAction,
     updatePlayer,
     updateWorld,
@@ -35,6 +35,7 @@ where
 
 import Data.Aeson hiding (Key)
 import Data.Map qualified as M
+import Data.Maybe (fromJust)
 import Data.Set qualified as S
 import GHC.Generics
 import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point)
@@ -94,12 +95,6 @@ moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
     x = fst pos
     y = snd pos
 
-attackEntity :: Entity -> Int -> Entity
-attackEntity entity attack = entity {eStats = entStats {life = oldLife - attack}}
-  where
-    entStats = eStats entity
-    oldLife = life entStats
-
 moveEntityTo :: Entity -> Point -> Entity
 moveEntityTo entity (x, y) = entity {ePos = (x, y)}
 
@@ -112,8 +107,10 @@ data Player = Player {pEnt :: Entity, pMaxMoveDistance :: Int, pMaxAttackDistanc
   deriving (Show)
 
 updatePlayer :: Action -> Player -> Int -> Player
-updatePlayer (Move dir) (Player ent moveDistance attackDistance) damage = Player (attackEntity (moveEntity ent dir) damage) moveDistance attackDistance
-updatePlayer _ (Player ent moveDistance attackDistance) damage = Player (attackEntity ent damage) moveDistance attackDistance
+updatePlayer (Move dir) (Player ent moveDistance attackDistance) damageValue =
+  Player (fromJust $ damage (moveEntity ent dir) damageValue) moveDistance attackDistance
+updatePlayer _ (Player ent moveDistance attackDistance) damageValue =
+  Player (fromJust $ damage ent damageValue) moveDistance attackDistance
 
 data EnemyState = EIdle | EFollow | EAttack deriving (Show, Eq)
 
@@ -122,13 +119,17 @@ data Enemy
   | Ranged {eEnt :: Entity, eState :: EnemyState}
   deriving (Show)
 
--- class Damageable a where
---   isValidTarget :: Point -> a -> Bool
+class Damageable a where
+  damage :: a -> Int -> Maybe a
 
--- instance Damageable Enemy where
---   isValidTarget (tx, ty) enemy = tx == ex && ty == ey
---     where
---       (ex, ey) = ePos $ eEnt enemy
+instance Damageable Entity where
+  damage entity value
+    | newLife <= 0 = Nothing
+    | otherwise = Just $ entity {eStats = stats'}
+    where
+      stats = eStats entity
+      newLife = life stats - value
+      stats' = stats {life = life stats - value}
 
 updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy (State world _ _ _ _) enemy
@@ -150,6 +151,16 @@ updateEnemy (State world _ _ _ _) enemy
 sumEnemiesAttack :: [Enemy] -> Int
 sumEnemiesAttack enemies = sum [attack $ eStats $ eEnt enemy | enemy <- enemies, eState enemy == EAttack]
 
+updateEnemyStats :: Point -> [Enemy] -> [Enemy]
+updateEnemyStats _ [] = []
+updateEnemyStats (x, y) (e : es)
+  | ePos (eEnt e) == (x, y) = case newEntity of
+      Nothing -> updateEnemyStats (x, y) es
+      Just entity -> e {eEnt = entity} : es
+  | otherwise = e : updateEnemyStats (x, y) es
+  where
+    newEntity = damage (eEnt e) 1
+
 updateWorld :: State World -> World
 updateWorld state = world {wPlayer = player, wEnemies = enemies, wMode = mode}
   where
@@ -159,7 +170,9 @@ updateWorld state = world {wPlayer = player, wEnemies = enemies, wMode = mode}
       if pAction == NoAction
         then NoMode
         else EnemyMode
-    enemies = map (updateEnemy state) (wEnemies world)
+    enemies = case pAction of
+      Attack atkPos -> updateEnemyStats atkPos $ map (updateEnemy state) (wEnemies world)
+      _ -> map (updateEnemy state) (wEnemies world)
     enemiesAttack = sumEnemiesAttack enemies
     player = updatePlayer pAction (wPlayer world) enemiesAttack
 
