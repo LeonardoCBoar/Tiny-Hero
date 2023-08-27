@@ -9,10 +9,35 @@ import Data.Aeson hiding (Key)
 import Data.ByteString.Lazy qualified as BSL
 import Data.Map qualified as M
 import Debug.Trace
-import Game
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
 import Renderer (renderActionsHelperText, renderEnemies, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
+import Game
+  ( Action (..),
+    Enemy (..),
+    Entity (..),
+    Stats(..),
+    Map (..),
+    Mode (MoveMode, NoMode),
+    Player (..),
+    State (State, lastMousePosition, playerAction, sData, updateTimer),
+    Tile (..),
+    World (World, wCurrentMap, wEnemies, wMaps, wMode, wPlayer),
+    createMaps,
+    deleteKey,
+    insertKey,
+    isMapBounded,
+    isValidAction,
+    newState,
+    updatePlayer,
+    updateWorld,
+    (!!!),
+  )
+import Graphics.Gloss (Display (InWindow), Picture, Point, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
+import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
+import Renderer (renderActionsHelperText, renderEnemies, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
+import System.Directory (getDirectoryContents)
+import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
 import System.Directory (getDirectoryContents)
 import System.FilePath
 
@@ -90,13 +115,14 @@ update dt state
   | isValidAction action = do
       trace
         ( "Player: "
-            ++ show (ePos $ pEnt $ wPlayer $ sData state)
-            ++ "Enemy: "
+            ++ show (ePos playerEnt) ++ "Life: " ++ show (life $ eStats playerEnt)
+            ++ " Enemy: "
             ++ show (ePos $ eEnt $ head $ wEnemies $ sData state)
         )
         state {sData = updateWorld state, updateTimer = 0, playerAction = NoAction}
   | otherwise = state {updateTimer = curUpdateTimer}
   where
+    playerEnt = pEnt $ wPlayer $ sData state
     action = playerAction state
     curUpdateTimer = updateTimer state + dt
 

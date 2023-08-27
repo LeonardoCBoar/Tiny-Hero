@@ -9,6 +9,7 @@ module Game
     Player (..),
     Enemy (..),
     Entity (..),
+    Stats(..),
     Action (..),
     Map (..),
     Tile (..),
@@ -89,44 +90,45 @@ moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
     pos = ePos entity
     x = fst pos
     y = snd pos
+  
+attackEntity :: Entity -> Integer -> Entity
+attackEntity entity attack = entity {eStats=entStats{life=oldLife - attack}}
+  where
+    entStats = eStats entity
+    oldLife = life entStats
 
 moveEntityTowards :: Entity -> Point -> Entity -- TODO: Check collisions
 moveEntityTowards entity (distanceX, distanceY)
-  | abs distanceX >= abs distanceY = do
-      trace
-        (show distanceX ++ " > " ++ show distanceY)
-        moveEntity
-        entity
-        (distanceX / abs distanceX, 0)
-  | otherwise = do
-      trace
-        (show distanceX ++ " < " ++ show distanceY)
-        moveEntity
-        entity
-        (0, distanceY / abs distanceY)
+  | abs distanceX >= abs distanceY = moveEntity entity (distanceX / abs distanceX, 0)
+  | otherwise                      = moveEntity entity (0, distanceY / abs distanceY)
 
 data Player = Player {pEnt :: Entity, pMaxMoveDistance :: Int}
   deriving (Show)
 
-updatePlayer :: Action -> Player -> Player
-updatePlayer (Move dir) (Player ent moveDistance) = Player (moveEntity ent dir) moveDistance
-updatePlayer _ player = player
+updatePlayer :: Action -> Player -> Integer -> Player
+updatePlayer (Move dir) (Player ent moveDistance) damage = Player (attackEntity (moveEntity ent dir) damage) moveDistance
+updatePlayer _ (Player ent moveDistance) damage = Player (attackEntity ent damage) moveDistance
 
-data EnemyState = EIdle | EFollow | EAttack -- TODO
+data EnemyState = EIdle | EFollow | EAttack  deriving (Show, Eq)
 
-data Enemy = Melee {eEnt :: Entity} | Ranged {eEnt :: Entity} deriving (Show)
+data Enemy = 
+  Melee {eEnt :: Entity, eState :: EnemyState} 
+  | Ranged {eEnt :: Entity, eState ::EnemyState} deriving (Show)
 
 updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy (State world _ _ _ _) enemy
   | playerDist == 0 = error "Impossible collision"
-  | playerDist == 1 = do trace "a" enemy -- TODO: Cause damage to player
-  | otherwise = do trace "b" Melee $ moveEntityTowards (eEnt enemy) playerDir -- TODO: Support ranged
+  | playerDist <= 1 =  enemy{eState = EAttack}
+  | otherwise =  Melee (moveEntityTowards (eEnt enemy) playerDir) EFollow -- TODO: Support ranged
   where
     playerDist = manhattanDist playerDir
     playerDir = pointDiff enemyPos playerPos
     enemyPos = ePos $ eEnt enemy
     playerPos = ePos $ pEnt player
     player = wPlayer world
+
+sumEnemiesAttack :: [Enemy] -> Integer
+sumEnemiesAttack enemies = sum [attack $ eStats $ eEnt enemy | enemy <- enemies, eState enemy == EAttack]
 
 updateWorld :: State World -> World
 updateWorld state = world {wPlayer = player, wEnemies = enemies, wMode = mode}
@@ -137,8 +139,9 @@ updateWorld state = world {wPlayer = player, wEnemies = enemies, wMode = mode}
       if pAction == NoAction
         then NoMode
         else EnemyMode
-    player = updatePlayer pAction (wPlayer world)
     enemies = map (updateEnemy state) (wEnemies world)
+    enemiesAttack = sumEnemiesAttack enemies
+    player = updatePlayer pAction (wPlayer world) enemiesAttack
 
 newtype Map a = Map
   { mTiles :: [[a]]
@@ -210,7 +213,7 @@ newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
         World
           { wPlayer =
               Player (newEntity (4, 0) 10 2 playerPicture) 2,
-            wEnemies = [Melee (newEntity (0, 3) 2 1 meleeEnemyPicture)], -- TODO: load enemies sprites
+            wEnemies = [Melee (newEntity (0, 3) 2 1 meleeEnemyPicture) EIdle], -- TODO: load enemies sprites
             wTiles = tiles,
             wPictureTileMap = pictureMap,
             wCurrentMap = 1,
