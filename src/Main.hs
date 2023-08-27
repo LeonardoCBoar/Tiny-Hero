@@ -73,34 +73,10 @@ handleEvents (EventKey key keyState _ _) state
     player = wPlayer world
     (px, py) = ePos $ pEnt player
     maxMoveDistance = fromIntegral $ pMaxMoveDistance player
-    tilesInMoveRange =
-      [ (x, y)
-        | x <- [px - maxMoveDistance .. px + maxMoveDistance],
-          y <- [py - maxMoveDistance .. py + maxMoveDistance],
-          abs (x - px) + abs (y - py) <= maxMoveDistance
-      ]
-    walkableTilesInMoveRange =
-      filter
-        ( \tilePos ->
-            isMapBounded currentMap tilePos
-              && isTileWalkable (currentMap !!! tilePos)
-        )
-        tilesInMoveRange
+    walkableTilesInMoveRange = findWalkableTilesInDistance currentMap (px, py) maxMoveDistance
 
     maxAttackDistance = fromIntegral $ pMaxAttackDistance player
-    tilesInAttackRange =
-      [ (x, y)
-        | x <- [px - maxAttackDistance .. px + maxAttackDistance],
-          y <- [py - maxAttackDistance .. py + maxAttackDistance],
-          abs (x - px) + abs (y - py) <= maxAttackDistance
-      ]
-    walkableTilesInAttackRange =
-      filter
-        ( \tilePos ->
-            isMapBounded currentMap tilePos
-              && isTileWalkable (currentMap !!! tilePos)
-        )
-        tilesInAttackRange
+    walkableTilesInAttackRange = findWalkableTilesInDistance currentMap (px, py) maxAttackDistance
 handleEvents _ state = state
 
 update :: Float -> State World -> State World

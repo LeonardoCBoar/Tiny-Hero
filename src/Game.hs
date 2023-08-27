@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
 module Game
@@ -27,6 +28,8 @@ module Game
     createMaps,
     getTileFromName,
     isTileWalkable,
+    findTilesInDistance,
+    findWalkableTilesInDistance,
   )
 where
 
@@ -97,6 +100,9 @@ attackEntity entity attack = entity {eStats = entStats {life = oldLife - attack}
     entStats = eStats entity
     oldLife = life entStats
 
+moveEntityTo :: Entity -> Point -> Entity
+moveEntityTo entity (x, y) = entity {ePos = (x, y)}
+
 moveEntityTowards :: Entity -> Point -> Entity -- TODO: Check collisions
 moveEntityTowards entity (distanceX, distanceY)
   | abs distanceX >= abs distanceY = moveEntity entity (distanceX / abs distanceX, 0)
@@ -128,13 +134,18 @@ updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy (State world _ _ _ _) enemy
   | playerDist == 0 = error "Impossible collision"
   | playerDist <= 1 = enemy {eState = EAttack}
-  | otherwise = Melee (moveEntityTowards (eEnt enemy) playerDir) EFollow -- TODO: Support ranged
+  -- \| otherwise = Melee (moveEntityTowards (eEnt enemy) playerDir) EFollow -- TODO: Support ranged
+  | otherwise = Melee (moveEntityTo (eEnt enemy) closestTile) EFollow
   where
-    playerDist = manhattanDist playerDir
     playerDir = pointDiff enemyPos playerPos
+    playerDist = manhattanDist playerDir
     enemyPos = ePos $ eEnt enemy
     playerPos = ePos $ pEnt player
     player = wPlayer world
+    currentMap = (!! wCurrentMap world) $ wMaps world
+    possibleTilesToWalk = findWalkableTilesInDistance currentMap enemyPos 1
+    distances = map (\tPos -> (manhattanDist $ pointDiff tPos playerPos, tPos)) possibleTilesToWalk
+    closestTile = snd $ minimum distances
 
 sumEnemiesAttack :: [Enemy] -> Int
 sumEnemiesAttack enemies = sum [attack $ eStats $ eEnt enemy | enemy <- enemies, eState enemy == EAttack]
@@ -221,6 +232,22 @@ isMapBounded map' (x, y)
   where
     height = length $ mTiles map'
     width = length $ head $ mTiles map'
+
+findTilesInDistance :: Map Tile -> Point -> Float -> [Point]
+findTilesInDistance map' (px, py) distance =
+  filter
+    (isMapBounded map')
+    [ (x, y)
+      | x <- [px - distance .. px + distance],
+        y <- [py - distance .. py + distance],
+        abs (x - px) + abs (y - py) <= distance
+    ]
+
+findWalkableTilesInDistance :: Map Tile -> Point -> Float -> [Point]
+findWalkableTilesInDistance map' (px, py) distance =
+  filter
+    (\tilePos -> isTileWalkable (map' !!! tilePos))
+    (findTilesInDistance map' (px, py) distance)
 
 newState :: (Picture, Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
 newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
