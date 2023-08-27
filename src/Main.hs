@@ -9,9 +9,6 @@ import Data.Aeson hiding (Key)
 import Data.ByteString.Lazy qualified as BSL
 import Data.Map qualified as M
 import Debug.Trace
-import Graphics.Gloss
-import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
-import Renderer (renderActionsHelperText, renderEnemies, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
 import Game
   ( Action (..),
     Enemy (..),
@@ -35,9 +32,7 @@ import Game
   )
 import Graphics.Gloss (Display (InWindow), Picture, Point, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
-import Renderer (renderActionsHelperText, renderEnemies, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
-import System.Directory (getDirectoryContents)
-import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
+import Renderer (renderHUD, renderEnemies, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
 import System.FilePath
 
@@ -45,7 +40,7 @@ import System.FilePath
 -- TODO: REMOVER TRACES ANTES DE ENTREGAR O PROJETO
 
 render :: State World -> Picture
-render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderActionsHelperText]
+render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
   where
     renderAll = map (\f -> f state) [renderMap, renderPossibleMoves, renderPlayer, renderEnemies]
 

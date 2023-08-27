@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPosition, renderActionsHelperText, renderPossibleMoves) where
+module Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPosition, renderHUD, renderPossibleMoves) where
 
 import Config (halfTileSize, scalingFactor, tileSize)
 import Data.Map qualified as M
@@ -17,6 +17,9 @@ screenPositionToWorldPosition (mouseX, mouseY) = (fromIntegral x, fromIntegral y
     rmy = (fromIntegral . floor) mouseY
     x = floor $ (1 / (scalingFactor * tileSize)) * (rmx / 2 + rmy)
     y = floor $ (1 / (scalingFactor * tileSize)) * (rmy - rmx / 2)
+
+renderHUD :: State World -> Picture
+renderHUD state = pictures [renderActionsHelperText]
 
 renderActionsHelperText :: Picture
 renderActionsHelperText =
