@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPosition, renderHUD, renderPossibleMoves) where
+module Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPosition, renderHUD, renderPossibleMoves, renderGameModeText) where
 
 import Config (halfTileSize, scalingFactor, tileSize)
 import Data.Map qualified as M
@@ -25,7 +25,7 @@ worldPositionToScreenPosition (x, y) = (x', y')
     y' = (x + y) * halfTileSize + tileSize
 
 renderHUD :: State World -> Picture
-renderHUD (State world _ _ _ _) = pictures $ map (scale 0.2 0.2) [renderActionsHelperText, renderLifeBar player]
+renderHUD state@(State world _ _ _ _) = pictures $ map (scale 0.2 0.2) [renderActionsHelperText, renderGameModeText state, renderLifeBar player]
   where
     player = wPlayer world
 
@@ -36,6 +36,15 @@ renderLifeBar player = pictures [background, foreground]
     foreground = color red $ translate (-1100) 1100 $ rectangleSolid (500 * playerLifeRatio) 100
     playerStats = eStats $ pEnt player
     playerLifeRatio = fromInteger (life playerStats) / fromInteger (maxLife playerStats)
+
+renderGameModeText :: State World -> Picture
+renderGameModeText state = translate (-2000) (-600) $ color white $ text $ case mode of
+  MoveMode _ -> "Move mode"
+  AttackMode -> "Attack mode"
+  _ -> "Waiting for mode selection..."
+  where
+    world = sData state
+    mode = wMode world
 
 renderActionsHelperText :: Picture
 renderActionsHelperText =
