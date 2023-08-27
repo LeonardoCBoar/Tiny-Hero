@@ -86,13 +86,15 @@ renderMap state = pictures $ renderTile state <$> tiles
 
 renderPossibleMoves :: State World -> Picture
 renderPossibleMoves state = case mode of
-  MoveMode walkableTilesInMoveRange -> pictures $ map (renderTile state . (\(x, y) -> (x, y, indicatorTile))) walkableTilesInMoveRange
-  AttackMode attackableTilesInAttackRange -> pictures $ map (renderTile state . (\(x, y) -> (x, y, indicatorTile))) attackableTilesInAttackRange
+  MoveMode walkableTilesInMoveRange -> renderMove indicatorTile walkableTilesInMoveRange
+  AttackMode attackableTilesInAttackRange -> renderMove attackIndicatorTile attackableTilesInAttackRange
   _ -> pictures []
   where
     world = sData state
     mode = wMode world
     indicatorTile = getTileFromName "Indicator" $ wTiles world
+    attackIndicatorTile = getTileFromName "AttackIndicator" $ wTiles world
+    renderMove tile tileList= pictures $ map (renderTile state . (\(x, y) -> (x, y, tile))) tileList
 
 renderAttackAnimation :: State World -> Picture
 renderAttackAnimation state

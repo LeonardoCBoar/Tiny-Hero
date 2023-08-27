@@ -1,0 +1,5 @@
+{
+  "name": "AttackIndicator",
+  "texture": "assets/images/tiles/attack_indicator.bmp",
+  "isWalkable": false
+}
