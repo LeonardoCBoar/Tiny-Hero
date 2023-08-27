@@ -122,10 +122,11 @@ main =
 
     playerPicture <- loadBMP (charactersFolder </> "knight.bmp")
     meleeEnemyPicture <- loadBMP (charactersFolder </> "ogre.bmp")
+    rangedEnemyPicture <- loadBMP (charactersFolder </> "mage.bmp")
     swordPicture <- loadBMP (itemsFolder </> "sword.bmp")
 
     let window = InWindow "My Window" (1000, 800) (100, 100)
-    let initialState = newState (playerPicture, meleeEnemyPicture, swordPicture) gameMaps tileMap gameTiles
+    let initialState = newState (playerPicture, meleeEnemyPicture, rangedEnemyPicture, swordPicture) gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update
   where

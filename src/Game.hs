@@ -135,8 +135,8 @@ instance Damageable Entity where
 updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy state enemy
   | playerDist == 0 = error "Impossible collision"
-  | playerDist <= 1 = enemy {eState = EAttack}
-  -- \| otherwise = Melee (moveEntityTowards (eEnt enemy) playerDir) EFollow -- TODO: Support ranged
+  | isMelee && playerDist <= 1 = enemy {eState = EAttack}
+  | isRanged && playerDist <= 8 = enemy {eState = EAttack}
   | otherwise = Melee (moveEntityTo (eEnt enemy) closestTile) EFollow
   where
     world = sData state
@@ -149,6 +149,13 @@ updateEnemy state enemy
     possibleTilesToWalk = findWalkableTilesInDistance currentMap enemyPos 1
     distances = map (\tPos -> (manhattanDist $ pointDiff tPos playerPos, tPos)) possibleTilesToWalk
     closestTile = snd $ minimum distances
+    isMelee = isEnemyMelee enemy
+    isRanged = isEnemyRanged enemy
+
+    isEnemyMelee (Melee _ _) = True
+    isEnemyMelee _ = False
+    isEnemyRanged (Ranged _ _) = True
+    isEnemyRanged _ = False
 
 sumEnemiesAttack :: [Enemy] -> Int
 sumEnemiesAttack enemies = sum [attack $ eStats $ eEnt enemy | enemy <- enemies, eState enemy == EAttack]
@@ -265,14 +272,17 @@ findWalkableTilesInDistance map' (px, py) distance =
     (\tilePos -> isTileWalkable (map' !!! tilePos))
     (findTilesInDistance map' (px, py) distance)
 
-newState :: (Picture, Picture, Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
-newState (playerPicture, meleeEnemyPicture, sword) maps pictureMap tiles =
+newState :: (Picture, Picture, Picture, Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
+newState (playerPicture, meleeEnemyPicture, rangedEnemyPicture, sword) maps pictureMap tiles =
   State
     { sData =
         World
           { wPlayer =
               Player (newEntity (4, 0) 10 2 playerPicture) 2 1,
-            wEnemies = [Melee (newEntity (0, 3) 2 1 meleeEnemyPicture) EIdle], -- TODO: load enemies sprites
+            wEnemies = [
+                        newMelee meleeEnemyPicture (0,3),
+                        newRanged rangedEnemyPicture (0,4)
+                        ],
             wTiles = tiles,
             wPictureTileMap = pictureMap,
             wCurrentMap = 0,
@@ -286,6 +296,12 @@ newState (playerPicture, meleeEnemyPicture, sword) maps pictureMap tiles =
       lastMousePosition = (0, 0),
       showAttackAnimation = False
     }
+
+newMelee :: Picture -> Point -> Enemy
+newMelee sprite pos = Melee (newEntity pos 2 2 sprite) EIdle
+
+newRanged :: Picture -> Point -> Enemy
+newRanged sprite pos = Ranged (newEntity pos 2 1 sprite) EIdle
 
 getTileFromName :: String -> [Tile] -> Tile
 getTileFromName name tiles = head $ filter (\tile -> tName tile == name) tiles
