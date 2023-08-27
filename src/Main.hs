@@ -94,11 +94,16 @@ update dt state
         )
         state {sData = updateWorld state, updateTimer = 0, playerAction = NoAction}
   | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0}
+  | null $ wEnemies world = state {sData = world {wEnemies = newEnemies, wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
   | otherwise = state {updateTimer = curUpdateTimer}
   where
+    world = sData state
     playerEnt = pEnt $ wPlayer $ sData state
     action = playerAction state
     curUpdateTimer = updateTimer state + dt
+    mapIndex = wCurrentMap world + 1
+    map' = (!! mapIndex) $ wMaps world
+    newEnemies = getMapEnemies state map'
 
 isFile :: FilePath -> Bool
 isFile path = path /= "." && path /= ".."

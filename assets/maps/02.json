@@ -1,0 +1,38 @@
+{
+  "enemies": [
+    {
+      "type": "melee",
+      "life": 2,
+      "attack": 1,
+      "pos": [
+        0,
+        1
+      ]
+    },
+    {
+      "type": "melee",
+      "life": 2,
+      "attack": 1,
+      "pos": [
+        1,
+        1
+      ]
+    },
+    {
+      "type": "ranged",
+      "life": 2,
+      "attack": 1,
+      "pos": [
+        2,
+        2
+      ]
+    }
+  ],
+  "tiles": [
+    "DDDDDDWDD",
+    "DDDDDDDDD",
+    "DDDDDDDDD",
+    "DDDDDWWDD",
+    "DDDDDWWDD"
+  ]
+}
