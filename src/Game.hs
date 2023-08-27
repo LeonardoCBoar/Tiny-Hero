@@ -75,7 +75,7 @@ pointDiff :: Point -> Point -> Point
 pointDiff (originX, originY) (targetX, targetY) = (targetX - originX, targetY - originY)
 
 manhattanDist :: Point -> Integer
-manhattanDist (x, y) = abs (round x + round y)
+manhattanDist (x, y) = abs (round x) + abs (round y)
 
 newEntity :: Point -> Integer -> Integer -> Picture -> Entity
 newEntity startPos startLife attack = Entity startPos 0 (Stats startLife startLife attack)
@@ -116,8 +116,8 @@ data Enemy = Melee {eEnt :: Entity} | Ranged {eEnt :: Entity} deriving (Show)
 updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy (State world _ _ _ _) enemy
   | playerDist == 0 = error "Impossible collision"
-  | playerDist == 1 = enemy -- TODO: Cause damage to player
-  | otherwise = Melee $ moveEntityTowards (eEnt enemy) playerDir -- TODO: Support ranged
+  | playerDist == 1 = do trace "a" enemy -- TODO: Cause damage to player
+  | otherwise = do trace "b" Melee $ moveEntityTowards (eEnt enemy) playerDir -- TODO: Support ranged
   where
     playerDist = manhattanDist playerDir
     playerDir = pointDiff enemyPos playerPos
