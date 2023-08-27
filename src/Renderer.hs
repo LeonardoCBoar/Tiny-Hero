@@ -7,8 +7,8 @@ module Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPo
 
 import Config (halfTileSize, scalingFactor, tileSize)
 import Data.Map qualified as M
-import Game (Enemy (..), Entity (ePos, eTexture), Map (..), Mode (MoveMode), Player (pEnt, pMaxMoveDistance), State (..), Tile (Tile, tWalkable), World (..), getTileFromName, isMapBounded, (!!!))
-import Graphics.Gloss (Picture, Point, circle, color, pictures, scale, text, translate, white, yellow)
+import Game (Enemy (..), Entity (ePos, eTexture, eStats),Stats(..), Map (..), Mode (MoveMode), Player (pEnt, pMaxMoveDistance), State (..), Tile (Tile, tWalkable), World (..), getTileFromName, isMapBounded, (!!!))
+import Graphics.Gloss (Picture, Point, circle, color, pictures, scale, text, translate, white, yellow, rectangleSolid, red, yellow)
 
 screenPositionToWorldPosition :: Point -> Point
 screenPositionToWorldPosition (mouseX, mouseY) = (fromIntegral x, fromIntegral y)
@@ -19,12 +19,20 @@ screenPositionToWorldPosition (mouseX, mouseY) = (fromIntegral x, fromIntegral y
     y = floor $ (1 / (scalingFactor * tileSize)) * (rmy - rmx / 2)
 
 renderHUD :: State World -> Picture
-renderHUD state = pictures [renderActionsHelperText]
+renderHUD (State world _ _ _ _) = pictures $ map (scale 0.2 0.2 ) [renderActionsHelperText, renderLifeBar player]
+  where player = wPlayer world
+
+renderLifeBar :: Player-> Picture
+renderLifeBar player = pictures [background, foreground]
+  where 
+    background = color white $ translate (-1100) (1100) $ rectangleSolid 510 110
+    foreground = color red $ translate (-1100) (1100) $ rectangleSolid (500 * playerLifeRatio) 100
+    playerStats = eStats $ pEnt player
+    playerLifeRatio = fromInteger (life playerStats) / fromInteger (maxLife playerStats)
+
 
 renderActionsHelperText :: Picture
-renderActionsHelperText =
-  scale 0.2 0.2 $
-    pictures
+renderActionsHelperText = pictures
       [ translate (-2000) (-800) $ color white $ text "Press 'm' to enter move mode",
         translate (-2000) (-1000) $ color white $ text "Press 'a' to enter attack mode"
       ]
