@@ -12,6 +12,7 @@ module Game
     Action (..),
     Map (..),
     Tile (..),
+    Mode (..),
     isValidAction,
     updatePlayer,
     updateWorld,
@@ -19,8 +20,10 @@ module Game
     insertKey,
     deleteKey,
     newState,
+    isMapBounded,
     (!!!),
     createMaps,
+    getTileFromName,
   )
 where
 
@@ -50,7 +53,7 @@ insertKey k s = s {sKeys = S.insert k (sKeys s)}
 deleteKey :: Key -> State a -> State a
 deleteKey k s = s {sKeys = S.delete k (sKeys s)}
 
-data Action = NoAction | Move Point | Attack Point deriving (Show)
+data Action = NoAction | Move Point | Attack Point deriving (Show, Eq)
 
 isValidAction :: Action -> Bool
 isValidAction NoAction = False
@@ -126,10 +129,15 @@ updateEnemy (State world _ _ _ _) enemy
     player = wPlayer world
 
 updateWorld :: State World -> World
-updateWorld state = world {wPlayer = player, wEnemies = enemies}
+updateWorld state = world {wPlayer = player, wEnemies = enemies, wMode = mode}
   where
     world = sData state
-    player = updatePlayer (playerAction state) (wPlayer world)
+    pAction = playerAction state
+    mode =
+      if pAction == NoAction
+        then NoMode
+        else EnemyMode
+    player = updatePlayer pAction (wPlayer world)
     enemies = map (updateEnemy state) (wEnemies world)
 
 newtype Map a = Map
@@ -170,20 +178,32 @@ instance FromJSON Tile where
     walkable <- o .: "isWalkable"
     return Tile {tName = name, tTexture = texture, tWalkable = walkable}
 
+data Mode = NoMode | MoveMode [Point] | AttackMode | EnemyMode deriving (Show, Eq)
+
 data World = World
   { wPlayer :: Player,
     wTiles :: [Tile],
     wPictureTileMap :: M.Map String Picture,
     wMaps :: [Map Tile],
     wCurrentMap :: Int,
-    wEnemies :: [Enemy]
+    wEnemies :: [Enemy],
+    wMode :: Mode
   }
   deriving (Show)
 
 (!!!) :: Map a -> Point -> a
 Map {mTiles = tiles} !!! (x, y) = (tiles !! floor y) !! floor x
 
-newState :: (Picture,Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
+isMapBounded :: Map a -> Point -> Bool
+isMapBounded map' (x, y)
+  | x < 0 || x >= fromIntegral width = False
+  | y < 0 || y >= fromIntegral height = False
+  | otherwise = True
+  where
+    height = length $ mTiles map'
+    width = length $ head $ mTiles map'
+
+newState :: (Picture, Picture) -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
 newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
   State
     { sData =
@@ -194,7 +214,8 @@ newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
             wTiles = tiles,
             wPictureTileMap = pictureMap,
             wCurrentMap = 1,
-            wMaps = maps
+            wMaps = maps,
+            wMode = NoMode
           },
       sKeys = S.empty,
       updateTimer = 0.0,

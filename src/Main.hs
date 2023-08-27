@@ -15,22 +15,24 @@ import Game
     Enemy (..),
     Entity (..),
     Map (..),
+    Mode (MoveMode, NoMode),
     Player (..),
     State (State, lastMousePosition, playerAction, sData, updateTimer),
     Tile (..),
-    World (World, wCurrentMap, wEnemies, wMaps, wPlayer),
+    World (World, wCurrentMap, wEnemies, wMaps, wMode, wPlayer),
     createMaps,
     deleteKey,
     insertKey,
+    isMapBounded,
     isValidAction,
     newState,
     updatePlayer,
     updateWorld,
     (!!!),
   )
-import Graphics.Gloss (Display (InWindow), Picture, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
+import Graphics.Gloss (Display (InWindow), Picture, Point, black, circle, color, loadBMP, pictures, play, scale, translate, yellow)
 import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
-import Renderer (renderMap, renderPlayer, renderEnemies, screenPositionToWorldPosition)
+import Renderer (renderActionsHelperText, renderEnemies, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
 import System.Directory (getDirectoryContents)
 import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
 
@@ -38,9 +40,9 @@ import System.FilePath (dropExtension, splitExtension, takeFileName, (</>))
 -- TODO: REMOVER TRACES ANTES DE ENTREGAR O PROJETO
 
 render :: State World -> Picture
-render state = scale scalingFactor scalingFactor $ pictures renderAll
+render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderActionsHelperText]
   where
-    renderAll = map (\f -> f state) [renderMap, renderPlayer, renderEnemies]
+    renderAll = map (\f -> f state) [renderMap, renderPossibleMoves, renderPlayer, renderEnemies]
 
 getActionFromKey :: Key -> Action
 getActionFromKey (SpecialKey KeyLeft) = Move (-1, 0)
@@ -54,24 +56,53 @@ updateInterval :: Float
 updateInterval = 0.5
 
 handleEvents :: Event -> State World -> State World
-handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = state'
+handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = case mode of
+  MoveMode walkableTiles ->
+    if (x, y) `elem` walkableTiles
+      then state {lastMousePosition = (x, y), playerAction = Move (x - px, y - py)}
+      else state {lastMousePosition = (x, y)}
+  _ -> state
   where
     (x, y) = screenPositionToWorldPosition (mouseX, mouseY)
     world = sData state
+    mode = wMode world
     player = wPlayer world
     playerEntity = pEnt player
-    state' = state {lastMousePosition = (x, y), sData = world {wPlayer = player {pEnt = playerEntity {ePos = (x, y)}}}}
+    (px, py) = ePos $ playerEntity
 handleEvents (EventKey key keyState _ _) state
   | updateTimer state < updateInterval = state
+  | key == Char 'm' && keyState == Down =
+      if isMoveMode
+        then state {sData = world {wMode = NoMode}}
+        else state {sData = world {wMode = MoveMode walkableTilesInMoveRange}}
   | keyState == Down && key `elem` actionKeys = state {playerAction = getActionFromKey key}
   | keyState == Down = insertKey key state
   | keyState == Up = deleteKey key state
-  | key == Char 'n' = state {sData = world {wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
-  | key == Char 'p' = state {sData = world {wCurrentMap = (wCurrentMap world - 1) `mod` length (wMaps world)}}
   | otherwise = state
   where
     world = sData state
+    isMoveMode = case wMode world of
+      MoveMode _ -> True
+      _ -> False
+
     actionKeys = [SpecialKey KeySpace, SpecialKey KeyUp, SpecialKey KeyDown, SpecialKey KeyLeft, SpecialKey KeyRight]
+    currentMap = (!! wCurrentMap world) $ wMaps world
+    player = wPlayer world
+    (px, py) = ePos $ pEnt player
+    maxMoveDistance = fromIntegral $ pMaxMoveDistance player
+    tilesInMoveRange =
+      [ (x, y)
+        | x <- [px - maxMoveDistance .. px + maxMoveDistance],
+          y <- [py - maxMoveDistance .. py + maxMoveDistance],
+          abs (x - px) + abs (y - py) <= maxMoveDistance
+      ]
+    walkableTilesInMoveRange =
+      filter
+        ( \tilePos ->
+            isMapBounded currentMap tilePos
+              && tWalkable (currentMap !!! tilePos)
+        )
+        tilesInMoveRange
 handleEvents _ state = state
 
 {-
