@@ -33,6 +33,10 @@ handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state =
     if (x, y) `elem` walkableTiles
       then state {lastMousePosition = (x, y), playerAction = Move (x - px, y - py)}
       else state {lastMousePosition = (x, y)}
+  AttackMode possibleAttackTiles ->
+    if (x, y) `elem` possibleAttackTiles
+      then state {lastMousePosition = (x, y), playerAction = Attack (x, y)}
+      else state {lastMousePosition = (x, y)}
   _ -> state
   where
     (x, y) = screenPositionToWorldPosition (mouseX, mouseY)
@@ -40,7 +44,7 @@ handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state =
     mode = wMode world
     player = wPlayer world
     playerEntity = pEnt player
-    (px, py) = ePos $ playerEntity
+    (px, py) = ePos playerEntity
 handleEvents (EventKey key keyState _ _) state
   | updateTimer state < updateInterval = state
   | key == Char 'n' && keyState == Down = state {sData = world {wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
@@ -48,6 +52,10 @@ handleEvents (EventKey key keyState _ _) state
       if isMoveMode
         then state {sData = world {wMode = NoMode}}
         else state {sData = world {wMode = MoveMode walkableTilesInMoveRange}}
+  | key == Char 'a' && keyState == Down =
+      if isAttackMode
+        then state {sData = world {wMode = NoMode}}
+        else state {sData = world {wMode = AttackMode walkableTilesInAttackRange}}
   | keyState == Down = insertKey key state
   | keyState == Up = deleteKey key state
   | otherwise = state
@@ -55,6 +63,10 @@ handleEvents (EventKey key keyState _ _) state
     world = sData state
     isMoveMode = case wMode world of
       MoveMode _ -> True
+      _ -> False
+
+    isAttackMode = case wMode world of
+      AttackMode _ -> True
       _ -> False
 
     currentMap = (!! wCurrentMap world) $ wMaps world
@@ -74,6 +86,21 @@ handleEvents (EventKey key keyState _ _) state
               && isTileWalkable (currentMap !!! tilePos)
         )
         tilesInMoveRange
+
+    maxAttackDistance = fromIntegral $ pMaxAttackDistance player
+    tilesInAttackRange =
+      [ (x, y)
+        | x <- [px - maxAttackDistance .. px + maxAttackDistance],
+          y <- [py - maxAttackDistance .. py + maxAttackDistance],
+          abs (x - px) + abs (y - py) <= maxAttackDistance
+      ]
+    walkableTilesInAttackRange =
+      filter
+        ( \tilePos ->
+            isMapBounded currentMap tilePos
+              && isTileWalkable (currentMap !!! tilePos)
+        )
+        tilesInAttackRange
 handleEvents _ state = state
 
 update :: Float -> State World -> State World

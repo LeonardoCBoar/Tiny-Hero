@@ -14,6 +14,7 @@ module Game
     Map (..),
     Tile (..),
     Mode (..),
+    -- Damageable (..),
     isValidAction,
     updatePlayer,
     updateWorld,
@@ -60,15 +61,15 @@ isValidAction NoAction = False
 isValidAction _ = True
 
 data Stats = Stats
-  { maxLife :: Integer,
-    life :: Integer,
-    attack :: Integer
+  { maxLife :: Int,
+    life :: Int,
+    attack :: Int
   }
   deriving (Show)
 
 data Entity = Entity
   { ePos :: Point,
-    eId :: Integer, -- TODO: Implement unique IDs
+    eId :: Int, -- TODO: Implement unique IDs
     eStats :: Stats,
     eTexture :: Picture
   }
@@ -77,10 +78,10 @@ data Entity = Entity
 pointDiff :: Point -> Point -> Point
 pointDiff (originX, originY) (targetX, targetY) = (targetX - originX, targetY - originY)
 
-manhattanDist :: Point -> Integer
+manhattanDist :: Point -> Int
 manhattanDist (x, y) = abs (round x) + abs (round y)
 
-newEntity :: Point -> Integer -> Integer -> Picture -> Entity
+newEntity :: Point -> Int -> Int -> Picture -> Entity
 newEntity startPos startLife attack = Entity startPos 0 (Stats startLife startLife attack)
 
 moveEntity :: Entity -> Point -> Entity
@@ -90,7 +91,7 @@ moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
     x = fst pos
     y = snd pos
 
-attackEntity :: Entity -> Integer -> Entity
+attackEntity :: Entity -> Int -> Entity
 attackEntity entity attack = entity {eStats = entStats {life = oldLife - attack}}
   where
     entStats = eStats entity
@@ -101,12 +102,12 @@ moveEntityTowards entity (distanceX, distanceY)
   | abs distanceX >= abs distanceY = moveEntity entity (distanceX / abs distanceX, 0)
   | otherwise = moveEntity entity (0, distanceY / abs distanceY)
 
-data Player = Player {pEnt :: Entity, pMaxMoveDistance :: Int}
+data Player = Player {pEnt :: Entity, pMaxMoveDistance :: Int, pMaxAttackDistance :: Int}
   deriving (Show)
 
-updatePlayer :: Action -> Player -> Integer -> Player
-updatePlayer (Move dir) (Player ent moveDistance) damage = Player (attackEntity (moveEntity ent dir) damage) moveDistance
-updatePlayer _ (Player ent moveDistance) damage = Player (attackEntity ent damage) moveDistance
+updatePlayer :: Action -> Player -> Int -> Player
+updatePlayer (Move dir) (Player ent moveDistance attackDistance) damage = Player (attackEntity (moveEntity ent dir) damage) moveDistance attackDistance
+updatePlayer _ (Player ent moveDistance attackDistance) damage = Player (attackEntity ent damage) moveDistance attackDistance
 
 data EnemyState = EIdle | EFollow | EAttack deriving (Show, Eq)
 
@@ -114,6 +115,14 @@ data Enemy
   = Melee {eEnt :: Entity, eState :: EnemyState}
   | Ranged {eEnt :: Entity, eState :: EnemyState}
   deriving (Show)
+
+-- class Damageable a where
+--   isValidTarget :: Point -> a -> Bool
+
+-- instance Damageable Enemy where
+--   isValidTarget (tx, ty) enemy = tx == ex && ty == ey
+--     where
+--       (ex, ey) = ePos $ eEnt enemy
 
 updateEnemy :: State World -> Enemy -> Enemy
 updateEnemy (State world _ _ _ _) enemy
@@ -127,7 +136,7 @@ updateEnemy (State world _ _ _ _) enemy
     playerPos = ePos $ pEnt player
     player = wPlayer world
 
-sumEnemiesAttack :: [Enemy] -> Integer
+sumEnemiesAttack :: [Enemy] -> Int
 sumEnemiesAttack enemies = sum [attack $ eStats $ eEnt enemy | enemy <- enemies, eState enemy == EAttack]
 
 updateWorld :: State World -> World
@@ -188,7 +197,7 @@ instance FromJSON Tile where
     walkable <- o .: "isWalkable"
     return Tile {tName = name, tTexture = texture, tWalkable = walkable}
 
-data Mode = NoMode | MoveMode [Point] | AttackMode | EnemyMode deriving (Show, Eq)
+data Mode = NoMode | MoveMode [Point] | AttackMode [Point] | EnemyMode deriving (Show, Eq)
 
 data World = World
   { wPlayer :: Player,
@@ -219,7 +228,7 @@ newState (playerPicture, meleeEnemyPicture) maps pictureMap tiles =
     { sData =
         World
           { wPlayer =
-              Player (newEntity (4, 0) 10 2 playerPicture) 2,
+              Player (newEntity (4, 0) 10 2 playerPicture) 2 1,
             wEnemies = [Melee (newEntity (0, 3) 2 1 meleeEnemyPicture) EIdle], -- TODO: load enemies sprites
             wTiles = tiles,
             wPictureTileMap = pictureMap,

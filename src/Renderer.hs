@@ -35,12 +35,12 @@ renderLifeBar player = pictures [background, foreground]
     background = color white $ translate (-1100) 1100 $ rectangleSolid 510 110
     foreground = color red $ translate (-1100) 1100 $ rectangleSolid (500 * playerLifeRatio) 100
     playerStats = eStats $ pEnt player
-    playerLifeRatio = fromInteger (life playerStats) / fromInteger (maxLife playerStats)
+    playerLifeRatio = fromIntegral (life playerStats) / fromIntegral (maxLife playerStats)
 
 renderGameModeText :: State World -> Picture
 renderGameModeText state = translate (-2000) (-600) $ color white $ text $ case mode of
   MoveMode _ -> "Move mode"
-  AttackMode -> "Attack mode"
+  AttackMode _ -> "Attack mode"
   _ -> "Waiting for mode selection..."
   where
     world = sData state
@@ -49,8 +49,8 @@ renderGameModeText state = translate (-2000) (-600) $ color white $ text $ case 
 renderActionsHelperText :: Picture
 renderActionsHelperText =
   pictures
-    [ translate (-2000) (-800) $ color white $ text "Press 'm' to enter move mode",
-      translate (-2000) (-1000) $ color white $ text "Press 'a' to enter attack mode"
+    [ translate (-2000) (-800) $ color white $ text "Press m to enter move mode",
+      translate (-2000) (-1000) $ color white $ text "Press a to enter attack mode"
     ]
 
 renderTile :: State World -> (Float, Float, Tile) -> Picture
@@ -76,6 +76,7 @@ renderMap state = pictures $ renderTile state <$> tiles
 renderPossibleMoves :: State World -> Picture
 renderPossibleMoves state = case mode of
   MoveMode walkableTilesInMoveRange -> pictures $ map (renderTile state . (\(x, y) -> (x, y, indicatorTile))) walkableTilesInMoveRange
+  AttackMode attackableTilesInAttackRange -> pictures $ map (renderTile state . (\(x, y) -> (x, y, indicatorTile))) attackableTilesInAttackRange
   _ -> pictures []
   where
     world = sData state
