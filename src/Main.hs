@@ -22,7 +22,7 @@ import Renderer
   )
 import System.Directory (getDirectoryContents)
 import System.FilePath ((</>))
-import Update (updateAttackAnimation, updateGameMap, updateWorld)
+import Update (updateAttackAnimation, updateWorld, refillEntityLife)
 
 render :: State World -> Picture
 render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
@@ -92,7 +92,12 @@ update dt state
   | life (eStats playerEnt) <= 0 = undefined
   | isValidAction action = state {sData = updateWorld dt state, updateTimer = 0, playerAction = NoAction}
   | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0, sData = world}
-  | null $ wEnemies world = state {sData = world {wEnemies = newEnemies, wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
+  | null $ wEnemies world = state 
+    {
+      sData = world {wEnemies = newEnemies, 
+      wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world), 
+      wPlayer = (wPlayer world) {pEnt = refillEntityLife playerEnt}} 
+    }
   | otherwise = state {updateTimer = curUpdateTimer, sData = world}
   where
     world = sData state

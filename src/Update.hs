@@ -1,4 +1,4 @@
-module Update (updateWorld, updateGameMap, updateAttackAnimation) where
+module Update (updateWorld, updateAttackAnimation, refillEntityLife) where
 
 import Config (updateInterval)
 import Data.Bifunctor (Bifunctor (bimap))
@@ -12,6 +12,7 @@ import Game
     Player (..),
     State (..),
     World (..),
+    Stats(..),
     findWalkableTilesInDistance,
     getMapEnemies,
     isEntityInTile,
@@ -27,6 +28,12 @@ moveEntity point entity = entity {ePos = finalPos}
   where
     (px, py) = ePos entity
     finalPos = bimap (px +) (py +) point
+
+refillEntityLife :: Entity -> Entity
+refillEntityLife entity = entity {eStats = entityStats {life=refilledLife}}
+  where 
+    entityStats = eStats entity
+    refilledLife = maxLife entityStats
 
 updatePlayer :: [Enemy] -> Float -> State World -> Player
 updatePlayer enemies _ state = case pAction of
