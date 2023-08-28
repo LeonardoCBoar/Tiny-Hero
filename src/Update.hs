@@ -21,6 +21,7 @@ import Game
     sumEnemiesAttack,
   )
 import Graphics.Gloss (Point)
+import Debug.Trace
 
 moveEntity :: Point -> Entity -> Entity
 moveEntity point entity = entity {ePos = finalPos}
@@ -30,13 +31,17 @@ moveEntity point entity = entity {ePos = finalPos}
 
 updatePlayer :: Float -> State World -> Player
 updatePlayer _ state = case pAction of
-  Move dir -> player {pEnt = moveEntity dir playerEntity}
+  Move dir -> player {pEnt = if isValidMove dir then movedPlayer dir else playerEntity}
+  
   _ -> player
   where
     pAction = playerAction state
     player = wPlayer $ sData state
     enemies = wEnemies $ sData state
     enemiesDamage = sumEnemiesAttack enemies
+    movedPlayer dir = moveEntity dir playerEntity 
+    movedPos dir = ePos $ movedPlayer dir
+    isValidMove dir = movedPos dir `notElem` map (ePos . eEnt) enemies
 
     playerEntity = case damage (pEnt player) enemiesDamage of
       Just entity -> entity
@@ -52,11 +57,11 @@ updateEnemies _ state = map updateEnemy enemies
       Melee _ _ ->
         if distanceToPlayer <= 1
           then enemy {eState = EAttack}
-          else enemy {eEnt = moveEntity closestTile enemyEntity}
+          else enemy {eEnt = moveEntity moveDir enemyEntity}
       Ranged _ _ ->
         if distanceToPlayer <= 8
           then enemy {eState = ERangedAttack}
-          else enemy {eEnt = moveEntity closestTile enemyEntity}
+          else enemy {eEnt = moveEntity moveDir enemyEntity}
       where
         enemyEntity = eEnt enemy
         enemyPos = ePos enemyEntity
@@ -66,6 +71,7 @@ updateEnemies _ state = map updateEnemy enemies
         currentMap = (!! wCurrentMap (sData state)) $ wMaps (sData state)
         possibleTilesToWalk = filter (not . isEntityInTile (sData state)) (findWalkableTilesInDistance currentMap enemyPos 1)
         distances = map (\tPos -> (manhattanDist $ pointDiff tPos playerPos, tPos)) possibleTilesToWalk
+        moveDir = pointDiff enemyPos closestTile
         closestTile
           | null distances = enemyPos
           | otherwise = snd $ minimum distances
