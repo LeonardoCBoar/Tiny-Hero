@@ -6,7 +6,7 @@ import Game
   ( Action (..),
     Damageable (damage),
     Enemy (..),
-    EnemyState (EAttack, ERangedAttack),
+    EnemyState (EAttack, ERangedAttack, EFollow),
     Entity (..),
     Mode (EnemyMode, NoMode),
     Player (..),
@@ -21,7 +21,6 @@ import Game
     sumEnemiesAttack,
   )
 import Graphics.Gloss (Point)
-import Debug.Trace
 
 moveEntity :: Point -> Entity -> Entity
 moveEntity point entity = entity {ePos = finalPos}
@@ -33,7 +32,7 @@ updatePlayer :: [Enemy] -> Float -> State World -> Player
 updatePlayer enemies _ state = case pAction of
   Move dir -> player {pEnt = if isValidMove dir then movedPlayer dir else playerEntity}
   
-  _ -> player
+  _ -> player{ pEnt = playerEntity}
   where
     pAction = playerAction state
     player = wPlayer $ sData state
@@ -56,7 +55,7 @@ updateEnemies _ state = map updateEnemy enemies
       Melee _ _ ->
         if distanceToPlayer <= 1
           then enemy {eState = EAttack}
-          else enemy {eEnt = moveEntity moveDir enemyEntity}
+          else enemy {eEnt = moveEntity moveDir enemyEntity, eState = EFollow}
       Ranged _ _ ->
         if distanceToPlayer <= 8
           then enemy {eState = ERangedAttack}
@@ -116,7 +115,7 @@ updateWorld dt state = sData state'
         then NoMode
         else EnemyMode
 
-    player' = updatePlayer enemies dt state
+    player' = updatePlayer enemies' dt state
 
     enemies = updateEnemies dt state
     enemies' = case playerAction state of
