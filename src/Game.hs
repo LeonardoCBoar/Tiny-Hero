@@ -34,7 +34,6 @@ where
 import Data.Aeson hiding (Key)
 import Data.Map qualified as M
 import Data.Maybe (fromJust)
-import Data.Set qualified as S
 import GHC.Generics
 import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point)
 
@@ -94,10 +93,14 @@ moveEntityTowards entity (distanceX, distanceY)
 data Player = Player {pEnt :: Entity, pMaxMoveDistance :: Int, pMaxAttackDistance :: Int}
   deriving (Show)
 
-updatePlayer :: Action -> Player -> Int -> Player
-updatePlayer (Move dir) (Player ent moveDistance attackDistance) damageValue =
-  Player (fromJust $ damage (moveEntity ent dir) damageValue) moveDistance attackDistance
-updatePlayer _ (Player ent moveDistance attackDistance) damageValue =
+updatePlayer :: [Enemy] -> Action -> Player -> Int -> Player
+updatePlayer enemies (Move dir) (Player ent moveDistance attackDistance) damageValue =
+  Player (fromJust $ damage (if isValid then movedPlayer else ent) damageValue) moveDistance attackDistance
+  where 
+    movedPlayer = moveEntity ent dir
+    movedPos = ePos movedPlayer
+    isValid = notElem movedPos (map (ePos . eEnt) enemies)
+updatePlayer _ _ (Player ent moveDistance attackDistance) damageValue =
   Player (fromJust $ damage ent damageValue) moveDistance attackDistance
 
 data EnemyState = EIdle | EFollow | EAttack deriving (Show, Eq)
@@ -172,7 +175,7 @@ updateWorld state = world {wPlayer = player, wEnemies = enemies, wMode = mode}
       Attack atkPos -> updateEnemyStats atkPos $ map (updateEnemy state) (wEnemies world)
       _ -> map (updateEnemy state) (wEnemies world)
     enemiesAttack = sumEnemiesAttack enemies
-    player = updatePlayer pAction (wPlayer world) enemiesAttack
+    player = updatePlayer enemies pAction (wPlayer world) enemiesAttack
 
 data MapEnemyDefinition = MapEnemyDefinition
   { enemyType :: String,
@@ -292,7 +295,7 @@ findTilesInDistance map' (px, py) distance =
 findWalkableTilesInDistance :: World -> Map Tile -> Point -> Float -> [Point]
 findWalkableTilesInDistance world map' (px, py) distance =
   filter
-    (\tilePos -> isTileWalkable (map' !!! tilePos) && not (isEntityInTile world tilePos) )
+    (\tilePos -> isTileWalkable (map' !!! tilePos))
     (findTilesInDistance map' (px, py) distance)
 
 getMapEnemies :: State World -> Map a -> [Enemy]
