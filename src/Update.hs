@@ -101,7 +101,7 @@ updateWorld dt state = sData state'
         then NoMode
         else EnemyMode
 
-    player' = updatePlayer enemies' dt state
+    player' = updatePlayer enemies dt state
 
     enemies = updateEnemies dt state
     enemies' = case playerAction state of
