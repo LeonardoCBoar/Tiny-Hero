@@ -19,9 +19,6 @@ module Game
     isValidAction,
     updatePlayer,
     updateWorld,
-    isKeyPressed,
-    insertKey,
-    deleteKey,
     newState,
     isMapBounded,
     (!!!),
@@ -43,21 +40,11 @@ import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point)
 
 data State a = State
   { sData :: a,
-    sKeys :: S.Set Key,
     updateTimer :: Float,
     playerAction :: Action,
     lastMousePosition :: Point,
     showAttackAnimation :: Bool
   }
-
-isKeyPressed :: Key -> State a -> Bool
-isKeyPressed k = S.member k . sKeys
-
-insertKey :: Key -> State a -> State a
-insertKey k s = s {sKeys = S.insert k (sKeys s)}
-
-deleteKey :: Key -> State a -> State a
-deleteKey k s = s {sKeys = S.delete k (sKeys s)}
 
 data Action = NoAction | Move Point | Attack Point deriving (Show, Eq)
 
@@ -324,7 +311,6 @@ newState (playerPicture, sword) enemyPictures maps pictureMap tiles = state {sDa
                 wSword = sword,
                 wEnemyPictures = enemyPictures
               },
-          sKeys = S.empty,
           updateTimer = 0.0,
           playerAction = NoAction,
           lastMousePosition = (0, 0),
@@ -332,12 +318,6 @@ newState (playerPicture, sword) enemyPictures maps pictureMap tiles = state {sDa
         }
     world = sData state
     enemies = getMapEnemies state (head maps)
-
-newMelee :: Picture -> Point -> Enemy
-newMelee sprite pos = Melee (newEntity pos 2 2 sprite) EIdle
-
-newRanged :: Picture -> Point -> Enemy
-newRanged sprite pos = Ranged (newEntity pos 2 1 sprite) EIdle
 
 getTileFromName :: String -> [Tile] -> Tile
 getTileFromName name tiles = head $ filter (\tile -> tName tile == name) tiles

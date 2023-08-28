@@ -54,8 +54,6 @@ handleEvents (EventKey key keyState _ _) state
       if isAttackMode
         then state {sData = world {wMode = NoMode}}
         else state {sData = world {wMode = AttackMode walkableTilesInAttackRange}}
-  | keyState == Down = insertKey key state
-  | keyState == Up = deleteKey key state
   | otherwise = state
   where
     world = sData state
