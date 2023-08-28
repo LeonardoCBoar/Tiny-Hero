@@ -66,7 +66,9 @@ updateEnemies _ state = map updateEnemy enemies
         currentMap = (!! wCurrentMap (sData state)) $ wMaps (sData state)
         possibleTilesToWalk = filter (not . isEntityInTile (sData state)) (findWalkableTilesInDistance currentMap enemyPos 1)
         distances = map (\tPos -> (manhattanDist $ pointDiff tPos playerPos, tPos)) possibleTilesToWalk
-        closestTile = snd $ minimum distances
+        closestTile
+          | null distances = enemyPos
+          | otherwise = snd $ minimum distances
 
 updateEnemyAtPosition :: Point -> [Enemy] -> [Enemy]
 updateEnemyAtPosition _ [] = []
