@@ -5,22 +5,38 @@ module Main (main) where
 import Config
 -- REMOVER DEPOIS DE TESTAR!!!!!!!!!!!!!
 
-import Data.Aeson hiding (Key)
+import Data.Aeson (decode)
 import Data.ByteString.Lazy qualified as BSL
 import Data.Map qualified as M
 import Game
-import Game (State (showAttackAnimation))
 import Graphics.Gloss
-import Graphics.Gloss.Interface.IO.Game (Event (EventKey), Key (Char, MouseButton, SpecialKey), KeyState (Down, Up), MouseButton (LeftButton), SpecialKey (..))
-import Renderer (renderAttackAnimation, renderEnemies, renderHUD, renderMap, renderPlayer, renderPossibleMoves, screenPositionToWorldPosition)
+import Graphics.Gloss.Interface.IO.Game
+import Renderer
+  ( renderAttackAnimation,
+    renderEnemies,
+    renderEnemyProjectiles,
+    renderHUD,
+    renderMap,
+    renderPlayer,
+    renderPossibleMoves,
+    screenPositionToWorldPosition,
+  )
 import System.Directory (getDirectoryContents)
-import System.FilePath
-import System.Random (Random (randomR), newStdGen)
+import System.FilePath ((</>))
 
 render :: State World -> Picture
 render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
   where
-    renderAll = map (\f -> f state) [renderMap, renderPossibleMoves, renderPlayer, renderEnemies, renderAttackAnimation]
+    renderAll =
+      map
+        (\f -> f state)
+        [ renderMap,
+          renderPossibleMoves,
+          renderPlayer,
+          renderEnemies,
+          renderAttackAnimation,
+          renderEnemyProjectiles
+        ]
 
 updateInterval :: Float
 updateInterval = 0.5
@@ -77,10 +93,11 @@ handleEvents _ state = state
 
 update :: Float -> State World -> State World
 update dt state
-  | isValidAction action = state {sData = updateWorld state, updateTimer = 0, playerAction = NoAction}
-  | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0}
-  | null $ wEnemies world = state {sData = world {wEnemies = newEnemies, wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
-  | otherwise = state {updateTimer = curUpdateTimer}
+  | life (eStats playerEnt) <= 0 = undefined
+  | isValidAction action = state {sData = (updateWorld state) {wEnemyProjectiles = enemyProjectiles'}, updateTimer = 0, playerAction = NoAction}
+  | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0, sData = world {wEnemyProjectiles = enemyProjectiles'}}
+  | null $ wEnemies world = state {sData = world {wEnemyProjectiles = enemyProjectiles', wEnemies = newEnemies, wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
+  | otherwise = state {updateTimer = curUpdateTimer, sData = world {wEnemyProjectiles = enemyProjectiles'}}
   where
     world = sData state
     playerEnt = pEnt $ wPlayer $ sData state
@@ -89,6 +106,7 @@ update dt state
     mapIndex = wCurrentMap world + 1
     map' = (!! mapIndex) $ wMaps world
     newEnemies = getMapEnemies state map'
+    enemyProjectiles' = updateEnemyProjectiles dt state
 
 isFile :: FilePath -> Bool
 isFile path = path /= "." && path /= ".."
@@ -117,9 +135,10 @@ main =
     enemyPicture2 <- loadBMP (charactersFolder </> "mage.bmp")
 
     swordPicture <- loadBMP (itemsFolder </> "sword.bmp")
+    fireballPicture <- loadBMP (objectsFolder </> "fireball.bmp")
 
     let window = InWindow "My Window" (1000, 800) (100, 100)
-    let initialState = newState (playerPicture, swordPicture) [enemyPicture1, enemyPicture2] gameMaps tileMap gameTiles
+    let initialState = newState (playerPicture, swordPicture, fireballPicture) [enemyPicture1, enemyPicture2] gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update
   where

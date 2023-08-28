@@ -1,6 +1,7 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# HLINT ignore "Use tuple-section" #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Renderer
@@ -12,6 +13,7 @@ module Renderer
     renderPossibleMoves,
     renderGameModeText,
     renderAttackAnimation,
+    renderEnemyProjectiles,
   )
 where
 
@@ -94,7 +96,7 @@ renderPossibleMoves state = case mode of
     mode = wMode world
     indicatorTile = getTileFromName "Indicator" $ wTiles world
     attackIndicatorTile = getTileFromName "AttackIndicator" $ wTiles world
-    renderMove tile tileList= pictures $ map (renderTile state . (\(x, y) -> (x, y, tile))) tileList
+    renderMove tile tileList = pictures $ map (renderTile state . (\(x, y) -> (x, y, tile))) tileList
 
 renderAttackAnimation :: State World -> Picture
 renderAttackAnimation state
@@ -113,10 +115,10 @@ renderPlayer state = renderEntity playerEntity
     playerEntity = pEnt $ wPlayer world
 
 renderEnemies :: State World -> Picture
-renderEnemies state = pictures [renderEntity $ eEnt enemy | enemy <- enemies]
+renderEnemies state = pictures [renderEntity $ eEnt enemy | enemy <- mapEnemies]
   where
     world = sData state
-    enemies = wEnemies world
+    mapEnemies = wEnemies world
 
 renderEntity :: Entity -> Picture
 renderEntity entity = translate x y texture
@@ -125,3 +127,14 @@ renderEntity entity = translate x y texture
     x = (px - py) * tileSize
     y = (px + py) * halfTileSize + tileSize
     texture = eTexture entity
+
+renderEnemyProjectiles :: State World -> Picture
+renderEnemyProjectiles state = pictures $ map renderProjectile projectiles
+  where
+    world = sData state
+    projectiles = wEnemyProjectiles world
+
+    renderProjectile :: StaticEntity -> Picture
+    renderProjectile (EnemyProjectile pos _ _ _ texture) = translate x y texture
+      where
+        (x, y) = worldPositionToScreenPosition pos
