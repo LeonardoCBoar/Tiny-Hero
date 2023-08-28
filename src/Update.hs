@@ -29,15 +29,14 @@ moveEntity point entity = entity {ePos = finalPos}
     (px, py) = ePos entity
     finalPos = bimap (px +) (py +) point
 
-updatePlayer :: Float -> State World -> Player
-updatePlayer _ state = case pAction of
+updatePlayer :: [Enemy] -> Float -> State World -> Player
+updatePlayer enemies _ state = case pAction of
   Move dir -> player {pEnt = if isValidMove dir then movedPlayer dir else playerEntity}
   
   _ -> player
   where
     pAction = playerAction state
     player = wPlayer $ sData state
-    enemies = wEnemies $ sData state
     enemiesDamage = sumEnemiesAttack enemies
     movedPlayer dir = moveEntity dir playerEntity 
     movedPos dir = ePos $ movedPlayer dir
@@ -117,7 +116,7 @@ updateWorld dt state = sData state'
         then NoMode
         else EnemyMode
 
-    player' = updatePlayer dt state
+    player' = updatePlayer enemies dt state
 
     enemies = updateEnemies dt state
     enemies' = case playerAction state of
