@@ -8,7 +8,6 @@ import Config
 import Data.Aeson hiding (Key)
 import Data.ByteString.Lazy qualified as BSL
 import Data.Map qualified as M
-import Debug.Trace
 import Game
 import Game (State (showAttackAnimation))
 import Graphics.Gloss
@@ -17,9 +16,6 @@ import Renderer (renderAttackAnimation, renderEnemies, renderHUD, renderMap, ren
 import System.Directory (getDirectoryContents)
 import System.FilePath
 import System.Random (Random (randomR), newStdGen)
-
--- REMOVER DEPOIS DE TESTAR!!!!!!!!!!!!!
--- TODO: REMOVER TRACES ANTES DE ENTREGAR O PROJETO
 
 render :: State World -> Picture
 render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
@@ -83,16 +79,7 @@ handleEvents _ state = state
 
 update :: Float -> State World -> State World
 update dt state
-  | isValidAction action = do
-      trace
-        ( "Player: "
-            ++ show (ePos playerEnt)
-            ++ "Life: "
-            ++ show (life $ eStats playerEnt)
-            ++ " Enemy: "
-            ++ show (ePos $ eEnt $ head $ wEnemies $ sData state)
-        )
-        state {sData = updateWorld state, updateTimer = 0, playerAction = NoAction}
+  | isValidAction action = state {sData = updateWorld state, updateTimer = 0, playerAction = NoAction}
   | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0}
   | null $ wEnemies world = state {sData = world {wEnemies = newEnemies, wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
   | otherwise = state {updateTimer = curUpdateTimer}
