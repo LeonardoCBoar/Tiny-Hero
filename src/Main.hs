@@ -3,7 +3,6 @@
 module Main (main) where
 
 import Config
--- REMOVER DEPOIS DE TESTAR!!!!!!!!!!!!!
 
 import Data.Aeson (decode)
 import Data.ByteString.Lazy qualified as BSL
@@ -22,7 +21,7 @@ import Renderer
   )
 import System.Directory (getDirectoryContents)
 import System.FilePath ((</>))
-import Update (updateAttackAnimation, updateWorld, refillEntityLife)
+import Update (updateWorld, refillEntityLife)
 
 render :: State World -> Picture
 render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]

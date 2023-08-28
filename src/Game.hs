@@ -27,9 +27,6 @@ module Game
     findWalkableTilesInDistance,
     getMapEnemies,
     isEntityInTile,
-    insertKey,
-    deleteKey,
-    isKeyPressed,
     sumEnemiesAttack,
     pointDiff,
     manhattanDist,
@@ -50,15 +47,6 @@ data State a = State
     lastMousePosition :: Point,
     showAttackAnimation :: Bool
   }
-
-insertKey :: Key -> State a -> State a
-insertKey key state = state {sKeys = S.insert key (sKeys state)}
-
-deleteKey :: Key -> State a -> State a
-deleteKey key state = state {sKeys = S.delete key (sKeys state)}
-
-isKeyPressed :: Key -> State a -> Bool
-isKeyPressed key state = S.member key (sKeys state)
 
 data Action = NoAction | Move Point | Attack Point deriving (Show, Eq)
 

@@ -1,6 +1,5 @@
-module Update (updateWorld, updateAttackAnimation, refillEntityLife) where
+module Update (updateWorld, refillEntityLife) where
 
-import Config (updateInterval)
 import Data.Bifunctor (Bifunctor (bimap))
 import Game
   ( Action (..),
@@ -14,7 +13,6 @@ import Game
     World (..),
     Stats(..),
     findWalkableTilesInDistance,
-    getMapEnemies,
     isEntityInTile,
     isValidAction,
     manhattanDist,
@@ -90,29 +88,6 @@ updateEnemyAtPosition pos (e : es)
   | otherwise = e : updateEnemyAtPosition pos es
   where
     entity = damage (eEnt e) 1
-
-updateAttackAnimation :: Float -> State World -> State World
-updateAttackAnimation _ state
-  | showAttackAnimation state && updateTimer state >= updateInterval =
-      state {showAttackAnimation = False, updateTimer = 0}
-  | otherwise = state
-
--- TODO: reset player life
-updateGameMap :: Float -> State World -> State World
-updateGameMap _ state
-  | null $ wEnemies (sData state) =
-      state
-        { sData =
-            (sData state)
-              { wCurrentMap = mapIndex + 1,
-                wEnemies = enemies
-              }
-        }
-  | otherwise = state
-  where
-    mapIndex = wCurrentMap (sData state) + 1
-    map' = (!! mapIndex) $ wMaps (sData state)
-    enemies = getMapEnemies state map'
 
 updateWorld :: Float -> State World -> World
 updateWorld dt state = sData state'
