@@ -16,9 +16,8 @@ module Game
     Mode (..),
     Damageable (..),
     StaticEntity (..),
+    EnemyState (..),
     isValidAction,
-    updatePlayer,
-    updateWorld,
     newState,
     isMapBounded,
     (!!!),
@@ -29,19 +28,19 @@ module Game
     findWalkableTilesInDistance,
     getMapEnemies,
     isEntityInTile,
-    updateEnemyProjectiles,
     insertKey,
     deleteKey,
     isKeyPressed,
+    sumEnemiesAttack,
+    pointDiff,
+    manhattanDist,
   )
 where
 
 import Data.Aeson hiding (Key)
 import Data.Map qualified as M
-import Data.Maybe (fromJust)
 import Data.Set qualified as S
 import GHC.Generics
-import Graphics.Gloss.Data.Vector (normalizeV)
 import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point)
 
 data State a = State
@@ -86,7 +85,6 @@ data StaticEntity = EnemyProjectile
 
 data Entity = Entity
   { ePos :: Point,
-    eId :: Int, -- TODO: Implement unique IDs
     eStats :: Stats,
     eTexture :: Picture
   }
@@ -99,26 +97,10 @@ manhattanDist :: Point -> Int
 manhattanDist (x, y) = abs (round x) + abs (round y)
 
 newEntity :: Point -> Int -> Int -> Picture -> Entity
-newEntity startPos startLife attackValue = Entity startPos 0 (Stats startLife startLife attackValue)
-
-moveEntity :: Entity -> Point -> Entity
-moveEntity entity (dx, dy) = entity {ePos = (x + dx, y + dy)}
-  where
-    pos = ePos entity
-    x = fst pos
-    y = snd pos
-
-moveEntityTo :: Entity -> Point -> Entity
-moveEntityTo entity (x, y) = entity {ePos = (x, y)}
+newEntity startPos startLife attackValue = Entity startPos (Stats startLife startLife attackValue)
 
 data Player = Player {pEnt :: Entity, pMaxMoveDistance :: Int, pMaxAttackDistance :: Int}
   deriving (Show)
-
-updatePlayer :: Action -> Player -> Int -> Player
-updatePlayer (Move dir) (Player ent moveDistance attackDistance) damageValue =
-  Player (fromJust $ damage (moveEntity ent dir) damageValue) moveDistance attackDistance
-updatePlayer _ (Player ent moveDistance attackDistance) damageValue =
-  Player (fromJust $ damage ent damageValue) moveDistance attackDistance
 
 data EnemyState = EIdle | EFollow | EAttack | ERangedAttack deriving (Show, Eq)
 
@@ -139,32 +121,6 @@ instance Damageable Entity where
       newLife = life stats - value
       stats' = stats {life = life stats - value}
 
-updateEnemy :: State World -> Enemy -> Enemy
-updateEnemy state enemy
-  | playerDist == 0 = error "Impossible collision"
-  | isMelee && playerDist <= 1 = enemy {eState = EAttack}
-  | isRanged && playerDist <= 8 = enemy {eState = ERangedAttack}
-  | otherwise = Melee (moveEntityTo (eEnt enemy) closestTile) EFollow
-  where
-    world = sData state
-    playerDir = pointDiff enemyPosition playerPos
-    playerDist = manhattanDist playerDir
-    enemyPosition = ePos $ eEnt enemy
-    playerPos = ePos $ pEnt player
-    player = wPlayer world
-    currentMap = (!! wCurrentMap world) $ wMaps world
-    possibleTilesToWalk = filter (not . isEntityInTile world) (findWalkableTilesInDistance currentMap enemyPos 1)
-    possibleTilesToWalk = findWalkableTilesInDistance currentMap enemyPosition 1
-    distances = map (\tPos -> (manhattanDist $ pointDiff tPos playerPos, tPos)) possibleTilesToWalk
-    closestTile = snd $ minimum distances
-    isMelee = isEnemyMelee enemy
-    isRanged = isEnemyRanged enemy
-
-    isEnemyMelee (Melee _ _) = True
-    isEnemyMelee _ = False
-    isEnemyRanged (Ranged _ _) = True
-    isEnemyRanged _ = False
-
 sumEnemiesAttack :: [Enemy] -> Int
 sumEnemiesAttack mapEnemies =
   sum
@@ -172,59 +128,6 @@ sumEnemiesAttack mapEnemies =
       | enemy <- mapEnemies,
         eState enemy == EAttack || eState enemy == ERangedAttack
     ]
-
-updateEnemyStats :: Point -> [Enemy] -> [Enemy]
-updateEnemyStats _ [] = []
-updateEnemyStats (x, y) (e : es)
-  | ePos (eEnt e) == (x, y) = case entity' of
-      Nothing -> updateEnemyStats (x, y) es
-      Just entity -> e {eEnt = entity} : es
-  | otherwise = e : updateEnemyStats (x, y) es
-  where
-    entity' = damage (eEnt e) 1
-
-updateWorld :: State World -> World
-updateWorld state = world {wPlayer = player, wEnemies = mapEnemies, wMode = mode, wEnemyProjectiles = wEnemyProjectiles world ++ enemyProjectiles}
-  where
-    world = sData state
-    pAction = playerAction state
-    mode =
-      if pAction == NoAction
-        then NoMode
-        else EnemyMode
-    mapEnemies = case pAction of
-      Attack atkPos -> updateEnemyStats atkPos $ map (updateEnemy state) (wEnemies world)
-      _ -> map (updateEnemy state) (wEnemies world)
-
-    playerPosition = ePos $ pEnt $ wPlayer world
-    inAttackRangedEnemies = filter (\enemy -> eState enemy == ERangedAttack) mapEnemies
-    enemyProjectiles = map (\enemy -> EnemyProjectile (ePos $ eEnt enemy) playerPosition 2 0 (wFireball world)) inAttackRangedEnemies
-
-    enemiesAttack = sumEnemiesAttack mapEnemies
-    player = updatePlayer pAction (wPlayer world) enemiesAttack
-
-updateEnemyProjectiles :: Float -> State World -> [StaticEntity]
-updateEnemyProjectiles dt state = updateProjectiles projectiles
-  where
-    world = sData state
-    projectiles = wEnemyProjectiles world
-
-    updateProjectiles :: [StaticEntity] -> [StaticEntity]
-    updateProjectiles [] = []
-    updateProjectiles (p : ps) = case updateProjectile p of
-      Nothing -> updateProjectiles ps
-      Just p' -> p' : updateProjectiles ps
-
-    updateProjectile :: StaticEntity -> Maybe StaticEntity
-    updateProjectile projectile
-      | timer' >= seMaxTime projectile = Nothing
-      | otherwise = Just $ projectile {seTimer = timer', sePos = newPos}
-      where
-        timer' = seTimer projectile + dt
-        oldPos = sePos projectile
-        targetPos = seTargetPos projectile
-        direction = normalizeV $ pointDiff targetPos oldPos
-        newPos = (fst oldPos + fst direction * dt, snd oldPos + snd direction * dt)
 
 data MapEnemyDefinition = MapEnemyDefinition
   { enemyType :: String,

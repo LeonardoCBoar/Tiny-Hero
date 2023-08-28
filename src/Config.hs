@@ -12,6 +12,7 @@ module Config
     charactersFolder,
     itemsFolder,
     objectsFolder,
+    updateInterval,
   )
 where
 
@@ -52,3 +53,6 @@ itemsFolder = imagesFolder </> "items"
 
 objectsFolder :: FilePath
 objectsFolder = imagesFolder </> "objects"
+
+updateInterval :: Float
+updateInterval = 0.5

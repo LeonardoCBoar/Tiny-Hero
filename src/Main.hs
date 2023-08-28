@@ -23,6 +23,7 @@ import Renderer
   )
 import System.Directory (getDirectoryContents)
 import System.FilePath ((</>))
+import Update (updateAttackAnimation, updateGameMap, updateWorld)
 
 render :: State World -> Picture
 render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
@@ -37,9 +38,6 @@ render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll,
           renderAttackAnimation,
           renderEnemyProjectiles
         ]
-
-updateInterval :: Float
-updateInterval = 0.5
 
 handleEvents :: Event -> State World -> State World
 handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = case mode of
@@ -85,7 +83,7 @@ handleEvents (EventKey key keyState _ _) state
     player = wPlayer world
     (px, py) = ePos $ pEnt player
     maxMoveDistance = fromIntegral $ pMaxMoveDistance player
-    walkableTilesInMoveRange = filter (not . isEntityInTile world ) (findWalkableTilesInDistance currentMap (px, py) maxMoveDistance)
+    walkableTilesInMoveRange = filter (not . isEntityInTile world) (findWalkableTilesInDistance currentMap (px, py) maxMoveDistance)
 
     maxAttackDistance = fromIntegral $ pMaxAttackDistance player
     walkableTilesInAttackRange = findWalkableTilesInDistance currentMap (px, py) maxAttackDistance
@@ -94,10 +92,10 @@ handleEvents _ state = state
 update :: Float -> State World -> State World
 update dt state
   | life (eStats playerEnt) <= 0 = undefined
-  | isValidAction action = state {sData = (updateWorld state) {wEnemyProjectiles = enemyProjectiles'}, updateTimer = 0, playerAction = NoAction}
-  | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0, sData = world {wEnemyProjectiles = enemyProjectiles'}}
-  | null $ wEnemies world = state {sData = world {wEnemyProjectiles = enemyProjectiles', wEnemies = newEnemies, wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
-  | otherwise = state {updateTimer = curUpdateTimer, sData = world {wEnemyProjectiles = enemyProjectiles'}}
+  | isValidAction action = state {sData = updateWorld dt state, updateTimer = 0, playerAction = NoAction}
+  | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0, sData = world}
+  | null $ wEnemies world = state {sData = world {wEnemies = newEnemies, wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
+  | otherwise = state {updateTimer = curUpdateTimer, sData = world}
   where
     world = sData state
     playerEnt = pEnt $ wPlayer $ sData state
@@ -106,7 +104,6 @@ update dt state
     mapIndex = wCurrentMap world + 1
     map' = (!! mapIndex) $ wMaps world
     newEnemies = getMapEnemies state map'
-    enemyProjectiles' = updateEnemyProjectiles dt state
 
 isFile :: FilePath -> Bool
 isFile path = path /= "." && path /= ".."
