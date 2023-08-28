@@ -39,7 +39,7 @@ handleGameEvents event state
             maxDistance = fromIntegral $ pMaxAttackDistance $ wPlayer world
             walkableTilesInAttackRange = findWalkableTilesInDistance currentMap playerPos maxDistance
          in case mode of
-              AttackMode _ -> state {sData = world {wMode = NoMode}, showAttackAnimation = True}
+              AttackMode _ -> state {sData = world {wMode = NoMode}}
               _ -> state {sData = world {wMode = AttackMode walkableTilesInAttackRange}}
       EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY) ->
         let (x, y) = screenPositionToWorldPosition (mouseX, mouseY)
@@ -51,7 +51,7 @@ handleGameEvents event state
                   else state {lastMousePosition = (x, y)}
               AttackMode possibleAttackTiles ->
                 if (x, y) `elem` possibleAttackTiles
-                  then state {lastMousePosition = (x, y), playerAction = Attack (x, y)}
+                  then state {lastMousePosition = (x, y), playerAction = Attack (x, y), showAttackAnimation = True}
                   else state {lastMousePosition = (x, y)}
               _ -> state
       _ -> state
