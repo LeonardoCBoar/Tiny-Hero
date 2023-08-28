@@ -14,7 +14,6 @@ import Graphics.Gloss.Interface.IO.Game
 import Renderer
   ( renderAttackAnimation,
     renderEnemies,
-    renderEnemyProjectiles,
     renderHUD,
     renderMap,
     renderPlayer,
@@ -35,8 +34,7 @@ render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll,
           renderPossibleMoves,
           renderPlayer,
           renderEnemies,
-          renderAttackAnimation,
-          renderEnemyProjectiles
+          renderAttackAnimation
         ]
 
 handleEvents :: Event -> State World -> State World

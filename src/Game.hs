@@ -15,7 +15,6 @@ module Game
     Tile (..),
     Mode (..),
     Damageable (..),
-    StaticEntity (..),
     EnemyState (..),
     isValidAction,
     newState,
@@ -71,15 +70,6 @@ data Stats = Stats
   { maxLife :: Int,
     life :: Int,
     attack :: Int
-  }
-  deriving (Show)
-
-data StaticEntity = EnemyProjectile
-  { sePos :: Point,
-    seTargetPos :: Point,
-    seMaxTime :: Float,
-    seTimer :: Float,
-    seTexture :: Picture
   }
   deriving (Show)
 
@@ -216,8 +206,7 @@ data World = World
     wMode :: Mode,
     wSword :: Picture,
     wFireball :: Picture,
-    wEnemyPictures :: [Picture],
-    wEnemyProjectiles :: [StaticEntity]
+    wEnemyPictures :: [Picture]
   }
   deriving (Show)
 
@@ -275,8 +264,7 @@ newState (playerPicture, sword, fireball) enemyPictures maps pictureMap tiles = 
                 wMode = NoMode,
                 wSword = sword,
                 wFireball = fireball,
-                wEnemyPictures = enemyPictures,
-                wEnemyProjectiles = []
+                wEnemyPictures = enemyPictures
               },
           updateTimer = 0.0,
           playerAction = NoAction,

@@ -13,7 +13,6 @@ module Renderer
     renderPossibleMoves,
     renderGameModeText,
     renderAttackAnimation,
-    renderEnemyProjectiles,
   )
 where
 
@@ -115,10 +114,25 @@ renderPlayer state = renderEntity playerEntity
     playerEntity = pEnt $ wPlayer world
 
 renderEnemies :: State World -> Picture
-renderEnemies state = pictures [renderEntity $ eEnt enemy | enemy <- mapEnemies]
+renderEnemies state = pictures [attackIndicator, pictures [renderEntity $ eEnt enemy | enemy <- mapEnemies]]
   where
     world = sData state
     mapEnemies = wEnemies world
+
+    rangedEnemies = filter isRanged mapEnemies
+    rangedEnemiesInAttackDistance =
+      filter
+        (\enemy -> manhattanDist (pointDiff (ePos (eEnt enemy)) (ePos $ pEnt $ wPlayer world)) <= 8)
+        rangedEnemies
+
+    attackIndicator =
+      pictures $
+        map
+          (\enemy -> let (x, y) = worldPositionToScreenPosition $ ePos $ eEnt enemy in translate x (y + 20) $ wFireball world)
+          rangedEnemiesInAttackDistance
+
+    isRanged (Melee _ _) = False
+    isRanged _ = True
 
 renderEntity :: Entity -> Picture
 renderEntity entity = translate x y texture
@@ -127,14 +141,3 @@ renderEntity entity = translate x y texture
     x = (px - py) * tileSize
     y = (px + py) * halfTileSize + tileSize
     texture = eTexture entity
-
-renderEnemyProjectiles :: State World -> Picture
-renderEnemyProjectiles state = pictures $ map renderProjectile projectiles
-  where
-    world = sData state
-    projectiles = wEnemyProjectiles world
-
-    renderProjectile :: StaticEntity -> Picture
-    renderProjectile (EnemyProjectile pos _ _ _ texture) = translate x y texture
-      where
-        (x, y) = worldPositionToScreenPosition pos
