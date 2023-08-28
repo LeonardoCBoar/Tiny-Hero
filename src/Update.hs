@@ -1,18 +1,22 @@
-module Update (updateWorld, refillEntityLife) where
+module Update (updateWorld, refillEntityLife, updateGame) where
 
+import Config (updateInterval)
 import Data.Bifunctor (Bifunctor (bimap))
+import Data.Maybe (fromMaybe)
 import Game
   ( Action (..),
     Damageable (damage),
     Enemy (..),
-    EnemyState (EAttack, ERangedAttack, EFollow),
+    EnemyState (EAttack, EFollow, ERangedAttack),
     Entity (..),
     Mode (EnemyMode, NoMode),
     Player (..),
+    Scene (GameOver, Win),
     State (..),
+    Stats (..),
     World (..),
-    Stats(..),
     findWalkableTilesInDistance,
+    getMapEnemies,
     isEntityInTile,
     isValidAction,
     manhattanDist,
@@ -28,27 +32,27 @@ moveEntity point entity = entity {ePos = finalPos}
     finalPos = bimap (px +) (py +) point
 
 refillEntityLife :: Entity -> Entity
-refillEntityLife entity = entity {eStats = entityStats {life=refilledLife}}
-  where 
+refillEntityLife entity = entity {eStats = entityStats {life = refilledLife}}
+  where
     entityStats = eStats entity
     refilledLife = maxLife entityStats
 
 updatePlayer :: [Enemy] -> Float -> State World -> Player
 updatePlayer enemies _ state = case pAction of
   Move dir -> player {pEnt = if isValidMove dir then movedPlayer dir else playerEntity}
-  
-  _ -> player{ pEnt = playerEntity}
+  _ -> player {pEnt = playerEntity}
   where
     pAction = playerAction state
     player = wPlayer $ sData state
     enemiesDamage = sumEnemiesAttack enemies
-    movedPlayer dir = moveEntity dir playerEntity 
+    movedPlayer dir = moveEntity dir playerEntity
     movedPos dir = ePos $ movedPlayer dir
     isValidMove dir = movedPos dir `notElem` map (ePos . eEnt) enemies
 
-    playerEntity = case damage (pEnt player) enemiesDamage of
-      Just entity -> entity
-      Nothing -> pEnt player -- TODO: game over
+    playerEntity =
+      fromMaybe
+        (pEnt player) {eStats = (eStats $ pEnt player) {life = 0}}
+        (damage (pEnt player) enemiesDamage)
 
 updateEnemies :: Float -> State World -> [Enemy]
 updateEnemies _ state = map updateEnemy enemies
@@ -117,3 +121,28 @@ updateWorld dt state = sData state'
               updateTimer = 0
             }
       | otherwise = state
+
+updateGame :: Float -> State World -> State World
+updateGame dt state
+  | life (eStats playerEnt) <= 0 = state {currentScene = GameOver}
+  | wCurrentMap world >= length (wMaps world) = state {currentScene = Win}
+  | isValidAction action = state {sData = updateWorld dt state, updateTimer = 0, playerAction = NoAction}
+  | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0}
+  | null $ wEnemies world =
+      state
+        { sData =
+            world
+              { wEnemies = newEnemies,
+                wCurrentMap = wCurrentMap world + 1,
+                wPlayer = (wPlayer world) {pEnt = refillEntityLife playerEnt}
+              }
+        }
+  | otherwise = state {updateTimer = curUpdateTimer, sData = world}
+  where
+    world = sData state
+    playerEnt = pEnt $ wPlayer $ sData state
+    action = playerAction state
+    curUpdateTimer = updateTimer state + dt
+    mapIndex = (wCurrentMap world + 1) `mod` length (wMaps world)
+    map' = (!! mapIndex) $ wMaps world
+    newEnemies = getMapEnemies state map'

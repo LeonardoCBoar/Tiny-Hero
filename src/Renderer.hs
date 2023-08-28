@@ -13,6 +13,9 @@ module Renderer
     renderPossibleMoves,
     renderGameModeText,
     renderAttackAnimation,
+    renderMainMenu,
+    renderGameOver,
+    renderWin,
   )
 where
 
@@ -76,7 +79,9 @@ renderTile state (x, y, Tile _ texPath _) = translate x' y' tex
 renderTile _ (_, _, EmptyTile) = pictures []
 
 renderMap :: State World -> Picture
-renderMap state = pictures $ renderTile state <$> tiles
+renderMap state
+  | wCurrentMap world >= length (wMaps world) = blank
+  | otherwise = pictures $ renderTile state <$> tiles
   where
     world = sData state
 
@@ -141,3 +146,21 @@ renderEntity entity = translate x y texture
     x = (px - py) * tileSize
     y = (px + py) * halfTileSize + tileSize
     texture = eTexture entity
+
+renderMainMenu :: State World -> Picture
+renderMainMenu _ = pictures [title, message]
+  where
+    title = scale 0.5 0.5 $ translate (-300) 0 $ color white $ text "Tiny Hero"
+    message = scale 0.15 0.15 $ translate (-600) (-400) $ color white $ text "Press space to start"
+
+renderGameOver :: State World -> Picture
+renderGameOver _ = pictures [title, message]
+  where
+    title = scale 0.5 0.5 $ translate (-300) 0 $ color white $ text "Game Over"
+    message = scale 0.15 0.15 $ translate (-600) (-400) $ color white $ text "Press space to restart"
+
+renderWin :: State World -> Picture
+renderWin _ = pictures [title, message]
+  where
+    title = scale 0.5 0.5 $ translate (-300) 0 $ color white $ text "You Won!"
+    message = scale 0.15 0.15 $ translate (-600) (-400) $ color white $ text "Press space to restart"

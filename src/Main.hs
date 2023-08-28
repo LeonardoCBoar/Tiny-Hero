@@ -3,29 +3,37 @@
 module Main (main) where
 
 import Config
-
 import Data.Aeson (decode)
 import Data.ByteString.Lazy qualified as BSL
 import Data.Map qualified as M
+import Events (handleGameEvents, handleGameOverEvents, handleMenuEvents, handleWinEvents)
 import Game
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
 import Renderer
   ( renderAttackAnimation,
     renderEnemies,
+    renderGameOver,
     renderHUD,
+    renderMainMenu,
     renderMap,
     renderPlayer,
     renderPossibleMoves,
-    screenPositionToWorldPosition,
+    renderWin,
   )
 import System.Directory (getDirectoryContents)
 import System.FilePath ((</>))
-import Update (updateWorld, refillEntityLife)
+import Update
 
 render :: State World -> Picture
-render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
+render state
+  | scene == Menu = renderMainMenu state
+  | scene == Game = pictures [scale scalingFactor scalingFactor $ pictures renderAll, renderHUD state]
+  | scene == GameOver = renderGameOver state
+  | scene == Win = renderWin state
+  | otherwise = blank
   where
+    scene = currentScene state
     renderAll =
       map
         (\f -> f state)
@@ -37,75 +45,21 @@ render state = pictures [scale scalingFactor scalingFactor $ pictures renderAll,
         ]
 
 handleEvents :: Event -> State World -> State World
-handleEvents (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) state = case mode of
-  MoveMode walkableTiles ->
-    if (x, y) `elem` walkableTiles
-      then state {lastMousePosition = (x, y), playerAction = Move (x - px, y - py)}
-      else state {lastMousePosition = (x, y)}
-  AttackMode possibleAttackTiles ->
-    if (x, y) `elem` possibleAttackTiles
-      then state {lastMousePosition = (x, y), playerAction = Attack (x, y), showAttackAnimation = True}
-      else state {lastMousePosition = (x, y)}
-  _ -> state
-  where
-    (x, y) = screenPositionToWorldPosition (mouseX, mouseY)
-    world = sData state
-    mode = wMode world
-    player = wPlayer world
-    playerEntity = pEnt player
-    (px, py) = ePos playerEntity
-handleEvents (EventKey key keyState _ _) state
-  | updateTimer state < updateInterval = state
-  | key == Char 'n' && keyState == Down = state {sData = world {wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world)}}
-  | key == Char 'm' && keyState == Down =
-      if isMoveMode
-        then state {sData = world {wMode = NoMode}}
-        else state {sData = world {wMode = MoveMode walkableTilesInMoveRange}}
-  | key == Char 'a' && keyState == Down =
-      if isAttackMode
-        then state {sData = world {wMode = NoMode}}
-        else state {sData = world {wMode = AttackMode walkableTilesInAttackRange}}
+handleEvents event state
+  | scene == Menu = handleMenuEvents event state
+  | scene == Game = handleGameEvents event state
+  | scene == GameOver = handleGameOverEvents event state
+  | scene == Win = handleWinEvents event state
   | otherwise = state
   where
-    world = sData state
-    isMoveMode = case wMode world of
-      MoveMode _ -> True
-      _ -> False
-
-    isAttackMode = case wMode world of
-      AttackMode _ -> True
-      _ -> False
-
-    currentMap = (!! wCurrentMap world) $ wMaps world
-    player = wPlayer world
-    (px, py) = ePos $ pEnt player
-    maxMoveDistance = fromIntegral $ pMaxMoveDistance player
-    walkableTilesInMoveRange = filter (not . isEntityInTile world) (findWalkableTilesInDistance currentMap (px, py) maxMoveDistance)
-
-    maxAttackDistance = fromIntegral $ pMaxAttackDistance player
-    walkableTilesInAttackRange = findWalkableTilesInDistance currentMap (px, py) maxAttackDistance
-handleEvents _ state = state
+    scene = currentScene state
 
 update :: Float -> State World -> State World
 update dt state
-  | life (eStats playerEnt) <= 0 = undefined
-  | isValidAction action = state {sData = updateWorld dt state, updateTimer = 0, playerAction = NoAction}
-  | showAttackAnimation state && updateTimer state >= updateInterval = state {showAttackAnimation = False, updateTimer = 0, sData = world}
-  | null $ wEnemies world = state 
-    {
-      sData = world {wEnemies = newEnemies, 
-      wCurrentMap = (wCurrentMap world + 1) `mod` length (wMaps world), 
-      wPlayer = (wPlayer world) {pEnt = refillEntityLife playerEnt}} 
-    }
-  | otherwise = state {updateTimer = curUpdateTimer, sData = world}
+  | scene == Game = updateGame dt state
+  | otherwise = state
   where
-    world = sData state
-    playerEnt = pEnt $ wPlayer $ sData state
-    action = playerAction state
-    curUpdateTimer = updateTimer state + dt
-    mapIndex = wCurrentMap world + 1
-    map' = (!! mapIndex) $ wMaps world
-    newEnemies = getMapEnemies state map'
+    scene = currentScene state
 
 isFile :: FilePath -> Bool
 isFile path = path /= "." && path /= ".."
@@ -136,7 +90,7 @@ main =
     swordPicture <- loadBMP (itemsFolder </> "sword.bmp")
     fireballPicture <- loadBMP (objectsFolder </> "fireball.bmp")
 
-    let window = InWindow "My Window" (1000, 800) (100, 100)
+    let window = InWindow "My Window" (screenWidth, screenHeight) (100, 100)
     let initialState = newState (playerPicture, swordPicture, fireballPicture) [enemyPicture1, enemyPicture2] gameMaps tileMap gameTiles
 
     play window black fps initialState render handleEvents update

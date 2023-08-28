@@ -16,6 +16,7 @@ module Game
     Mode (..),
     Damageable (..),
     EnemyState (..),
+    Scene (..),
     isValidAction,
     newState,
     isMapBounded,
@@ -30,6 +31,7 @@ module Game
     sumEnemiesAttack,
     pointDiff,
     manhattanDist,
+    restartGame,
   )
 where
 
@@ -39,13 +41,16 @@ import Data.Set qualified as S
 import GHC.Generics
 import Graphics.Gloss.Interface.IO.Interact (Key (..), Picture, Point)
 
+data Scene = Menu | Game | GameOver | Win deriving (Show, Eq)
+
 data State a = State
   { sData :: a,
     sKeys :: S.Set Key,
     updateTimer :: Float,
     playerAction :: Action,
     lastMousePosition :: Point,
-    showAttackAnimation :: Bool
+    showAttackAnimation :: Bool,
+    currentScene :: Scene
   }
 
 data Action = NoAction | Move Point | Attack Point deriving (Show, Eq)
@@ -258,13 +263,22 @@ newState (playerPicture, sword, fireball) enemyPictures maps pictureMap tiles = 
           playerAction = NoAction,
           lastMousePosition = (0, 0),
           showAttackAnimation = False,
-          sKeys = S.empty
+          sKeys = S.empty,
+          currentScene = Menu
         }
     world = sData state
     mapEnemies = getMapEnemies state (head maps)
 
 getTileFromName :: String -> [Tile] -> Tile
 getTileFromName name tiles = head $ filter (\tile -> tName tile == name) tiles
+
+restartGame :: State World -> State World
+restartGame state = state {sData = world {wPlayer = player', wCurrentMap = currentMap', wEnemies = enemies'}, currentScene = Game}
+  where
+    world = sData state
+    player' = Player (newEntity (4, 0) 10 2 (eTexture $ pEnt $ wPlayer world)) 2 1
+    currentMap' = 0
+    enemies' = getMapEnemies state (head $ wMaps world)
 
 createMaps :: [Map Char] -> [Tile] -> [Map Tile]
 createMaps charMaps tiles = map createMap charMaps

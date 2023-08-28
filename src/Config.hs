@@ -13,6 +13,8 @@ module Config
     itemsFolder,
     objectsFolder,
     updateInterval,
+    screenWidth,
+    screenHeight,
   )
 where
 
@@ -56,3 +58,6 @@ objectsFolder = imagesFolder </> "objects"
 
 updateInterval :: Float
 updateInterval = 0.5
+
+screenWidth, screenHeight :: Int
+(screenWidth, screenHeight) = (1000, 800)
