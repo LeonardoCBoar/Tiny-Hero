@@ -28,6 +28,7 @@ module Game
     findTilesInDistance,
     findWalkableTilesInDistance,
     getMapEnemies,
+    isEntityInTile,
   )
 where
 
@@ -136,7 +137,7 @@ updateEnemy state enemy
     playerPos = ePos $ pEnt player
     player = wPlayer world
     currentMap = (!! wCurrentMap world) $ wMaps world
-    possibleTilesToWalk = findWalkableTilesInDistance world currentMap enemyPos 1
+    possibleTilesToWalk = filter (not . isEntityInTile world) (findWalkableTilesInDistance currentMap enemyPos 1)
     distances = map (\tPos -> (manhattanDist $ pointDiff tPos playerPos, tPos)) possibleTilesToWalk
     closestTile
       | null distances = enemyPos 
@@ -279,8 +280,11 @@ isMapBounded map' (x, y)
     height = length $ mTiles map'
     width = length $ head $ mTiles map'
 
+isEnemyInTile :: World -> Point -> Bool
+isEnemyInTile world tile = tile `elem` map (ePos . eEnt) (wEnemies world)
+
 isEntityInTile :: World -> Point -> Bool
-isEntityInTile world tile = tile `elem` map (ePos . eEnt) (wEnemies world) || tile == ePos (pEnt $ wPlayer world)
+isEntityInTile world tile = isEnemyInTile world tile || tile == ePos (pEnt $ wPlayer world)
 
 findTilesInDistance :: Map Tile -> Point -> Float -> [Point]
 findTilesInDistance map' (px, py) distance =
@@ -292,8 +296,8 @@ findTilesInDistance map' (px, py) distance =
         abs (x - px) + abs (y - py) <= distance
     ]
 
-findWalkableTilesInDistance :: World -> Map Tile -> Point -> Float -> [Point]
-findWalkableTilesInDistance world map' (px, py) distance =
+findWalkableTilesInDistance :: Map Tile -> Point -> Float -> [Point]
+findWalkableTilesInDistance map' (px, py) distance =
   filter
     (\tilePos -> isTileWalkable (map' !!! tilePos))
     (findTilesInDistance map' (px, py) distance)

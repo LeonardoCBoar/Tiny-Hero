@@ -69,10 +69,10 @@ handleEvents (EventKey key keyState _ _) state
     player = wPlayer world
     (px, py) = ePos $ pEnt player
     maxMoveDistance = fromIntegral $ pMaxMoveDistance player
-    walkableTilesInMoveRange = findWalkableTilesInDistance world currentMap (px, py) maxMoveDistance
+    walkableTilesInMoveRange = filter (not . isEntityInTile world ) (findWalkableTilesInDistance currentMap (px, py) maxMoveDistance)
 
     maxAttackDistance = fromIntegral $ pMaxAttackDistance player
-    walkableTilesInAttackRange = findWalkableTilesInDistance world currentMap (px, py) maxAttackDistance
+    walkableTilesInAttackRange = findWalkableTilesInDistance currentMap (px, py) maxAttackDistance
 handleEvents _ state = state
 
 update :: Float -> State World -> State World
