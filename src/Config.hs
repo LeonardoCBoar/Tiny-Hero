@@ -60,4 +60,4 @@ updateInterval :: Float
 updateInterval = 0.5
 
 screenWidth, screenHeight :: Int
-(screenWidth, screenHeight) = (1000, 800)
+(screenWidth, screenHeight) = (1200, 1000)

@@ -28,6 +28,10 @@
       ]
     }
   ],
+  "playerPos": [
+    7,
+    0
+  ],
   "tiles": [
     "DDDDDDWDD",
     "DDDDDDDDD",

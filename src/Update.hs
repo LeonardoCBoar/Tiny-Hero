@@ -9,6 +9,7 @@ import Game
     Enemy (..),
     EnemyState (EAttack, EFollow, ERangedAttack),
     Entity (..),
+    Map (mPlayerPos),
     Mode (EnemyMode, NoMode),
     Player (..),
     Scene (GameOver, Win),
@@ -134,7 +135,7 @@ updateGame dt state
             world
               { wEnemies = newEnemies,
                 wCurrentMap = wCurrentMap world + 1,
-                wPlayer = (wPlayer world) {pEnt = refillEntityLife playerEnt}
+                wPlayer = (wPlayer world) {pEnt = (refillEntityLife playerEnt) {ePos = playerPos}}
               }
         }
   | otherwise = state {updateTimer = curUpdateTimer, sData = world}
@@ -146,3 +147,4 @@ updateGame dt state
     mapIndex = (wCurrentMap world + 1) `mod` length (wMaps world)
     map' = (!! mapIndex) $ wMaps world
     newEnemies = getMapEnemies state map'
+    playerPos = mPlayerPos map'

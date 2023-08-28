@@ -141,7 +141,8 @@ createEnemyFromDefinition state def = case enemyType def of
 
 data Map a = Map
   { mTiles :: [[a]],
-    enemies :: [MapEnemyDefinition]
+    mEnemies :: [MapEnemyDefinition],
+    mPlayerPos :: Point
   }
   deriving (Show, Generic)
 
@@ -152,16 +153,18 @@ instance (FromJSON a) => FromJSON (Map a) where
   parseJSON = withObject "Map" $ \o -> do
     jsonTiles <- o .: "tiles"
     mapEnemies <- o .: "enemies"
+    playerPos <- o .: "playerPos"
 
-    return Map {mTiles = jsonTiles, enemies = mapEnemies}
+    return Map {mTiles = jsonTiles, mEnemies = mapEnemies, mPlayerPos = playerPos}
 
 instance Functor Map where
-  fmap f Map {mTiles = tiles, enemies = mapEnemies} = Map {mTiles = map (map f) tiles, enemies = mapEnemies}
+  fmap f Map {mTiles = tiles, mEnemies = mapEnemies, mPlayerPos = playerPos} =
+    Map {mTiles = map (map f) tiles, mEnemies = mapEnemies, mPlayerPos = playerPos}
 
 instance Applicative Map where
-  pure a = Map [[a]] []
-  Map [[f]] _ <*> Map values eCount = Map (map (map f) values) eCount
-  Map fs _ <*> Map values eCount = Map (zipWith (zipWith ($)) fs values) eCount
+  pure a = Map [[a]] [] (0, 0)
+  Map [[f]] _ _ <*> Map values eCount pPos = Map (map (map f) values) eCount pPos
+  Map fs _ _ <*> Map values eCount pPos = Map (zipWith (zipWith ($)) fs values) eCount pPos
 
 data Tile
   = Tile
@@ -238,7 +241,7 @@ findWalkableTilesInDistance map' (px, py) distance =
     (findTilesInDistance map' (px, py) distance)
 
 getMapEnemies :: State World -> Map a -> [Enemy]
-getMapEnemies state map' = map (createEnemyFromDefinition state) (enemies map')
+getMapEnemies state map' = map (createEnemyFromDefinition state) (mEnemies map')
 
 newState :: (Picture, Picture, Picture) -> [Picture] -> [Map Tile] -> M.Map String Picture -> [Tile] -> State World
 newState (playerPicture, sword, fireball) enemyPictures maps pictureMap tiles = state {sData = world {wEnemies = mapEnemies}}
@@ -248,7 +251,7 @@ newState (playerPicture, sword, fireball) enemyPictures maps pictureMap tiles = 
         { sData =
             World
               { wPlayer =
-                  Player (newEntity (4, 0) 10 2 playerPicture) 2 1,
+                  Player (newEntity playerPos 10 2 playerPicture) 2 1,
                 wEnemies = [],
                 wTiles = tiles,
                 wPictureTileMap = pictureMap,
@@ -267,6 +270,7 @@ newState (playerPicture, sword, fireball) enemyPictures maps pictureMap tiles = 
           currentScene = Menu
         }
     world = sData state
+    playerPos = mPlayerPos $ head maps
     mapEnemies = getMapEnemies state (head maps)
 
 getTileFromName :: String -> [Tile] -> Tile
@@ -276,9 +280,10 @@ restartGame :: State World -> State World
 restartGame state = state {sData = world {wPlayer = player', wCurrentMap = currentMap', wEnemies = enemies'}, currentScene = Game}
   where
     world = sData state
-    player' = Player (newEntity (4, 0) 10 2 (eTexture $ pEnt $ wPlayer world)) 2 1
+    player' = Player (newEntity playerPos 10 2 (eTexture $ pEnt $ wPlayer world)) 2 1
     currentMap' = 0
     enemies' = getMapEnemies state (head $ wMaps world)
+    playerPos = mPlayerPos $ head $ wMaps world
 
 createMaps :: [Map Char] -> [Tile] -> [Map Tile]
 createMaps charMaps tiles = map createMap charMaps

@@ -19,6 +19,10 @@
       ]
     }
   ],
+  "playerPos": [
+    4,
+    0
+  ],
   "tiles": [
     "DDDDD",
     "DDDWW",
